@@ -4,7 +4,7 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
 
 ## Status
 
-**Phases 1–6 are complete and approved (2026-11-02). Phase 7 is next and has not started.**
+**Phases 1–7 are complete and approved (2026-11-02). Next: Phase 8.**
 
 | Phase | Status | Goal | Key deliverables | Done when |
 |---|---|---|---|---|
@@ -14,7 +14,7 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
 | **4. Pomodoro timer** | ✅ Approved | An accurate, lovely timer | `core/timer` engine plus tests; start, pause, resume, reset, skip; cycle and long break; persistence and background reconciliation. *Custom durations and notifications moved to Phase 8.* | Tests pass; survives reload and backgrounding |
 | **5. Coins and rewards** | ✅ Approved | Studying pays | Idempotent wallet ledger, cycle and daily-goal bonuses, coin fly-up animation | No double payouts (tested) |
 | **6. Shop and customization** | ✅ Approved | Spend coins on Koa | Catalog, shop UI, buy, equip and unequip, wallet with separate earned and spent, wardrobe persistence, accessory-layer integration. **Accessory artwork not produced yet** (`docs/phase-6/accessory-assets.md`). | Purchases, ownership and outfit persist (tested); items appear on Koa once their art exists |
-| **7. Personality and interactions** | ⏭️ **Next, not started** | Koa feels alive | Koala state machine, ambient actions, tap and multi-tap reactions, speech bubbles, nap on inactivity, show-off on equip. Needs Tier 2 poses from the art pipeline; until they exist it works within the idle frames. | Never interrupts focus; no repeated actions; respects reduced motion |
+| **7. Personality and interactions** | ✅ Approved | Koa feels alive | Koala state machine, ambient actions, tap and multi-tap reactions, speech bubbles, nap on inactivity, show-off on equip. Needs Tier 2 poses from the art pipeline; until they exist it works within the idle frames. | Never interrupts focus; no repeated actions; respects reduced motion |
 | **8. Statistics and settings** | Planned | Progress you can see | Totals, streak, daily goal, weekly chart. Settings (`docs/phase-8/settings-plan.md`): **custom focus, short break and long break durations (R1)**, **adjustable daily goal (R2)**, notifications, wake lock, sounds, data reset and export. Evening theme (stretch goal). | Stats derived from history (tested); custom durations validated, persisted, never altering a running session (tested) |
 | **9. PWA and mobile optimization** | Planned | Installable and offline | `vite-plugin-pwa`, manifest, Apple touch icons and splash screens, offline caching of art and fonts, standalone polish, performance budget (keep the design sheet out of the shipped bundle) | Installs on iPhone; works offline; Lighthouse PWA checks pass |
 | **10. Testing and polish** | Planned | Ship quality | Committed Playwright suite, accessibility pass, motion tuning, copy pass, bug bash | Release candidate |
@@ -55,3 +55,15 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
   - **Hoodie recolors:** deferred. Producing them by recoloring the Master's hoodie in code needs explicit approval (character bible §5).
   - **Tests:** 108 unit tests.
 - **2026-11-02:** Phase 6 approved. Documentation updated and the project prepared for GitHub. **Next: Phase 7.**
+- **2026-11-02:** Phase 6 decisions confirmed: no accessory artwork yet (separate art task later); hoodie recoloring postponed until it can be done cleanly without affecting the fur; shop structure, artwork integration, catalog and prices stay as they are.
+- **2026-11-02:** Phase 7 implemented:
+  - Pure koala brain in `src/core/koala/` (state machine + timer-context mapping), tuning in `src/config/koalaBehavior.ts`, lines in `src/config/koalaLines.ts`; store and `<KoaCompanion>` in `src/features/koala/`; wiring in `src/app/connect.ts`. Not persisted.
+  - **Existing art only:** behaviors are transforms of the idle frame or use the approved blink frame (slow blink, eyes closed while napping). No new poses, no placeholder art. The sleepy "z" glyphs are typography, as planned in character bible §6.
+  - Decisions:
+    - Unprompted speech at most every **2 minutes** (bible said ~90s), to keep Koa subtle. Tap replies at most every 20s; event lines (celebrations, breaks, waking) always show.
+    - **Focus:** no ambient actions, speech or naps; taps get a rate-limited soft squish. Paused focus counts as idle.
+    - Celebration lines wait until the coin labels have floated away (2.3–3s).
+    - Napping after 5 min without input (3 min during a break), never during focus.
+    - The Home hop on rewards and the Shop hop on equip are replaced by the brain's celebrate and show-off reactions.
+  - **Tests:** 145 unit tests (37 new for the brain, context mapping, store and `canAffordAnything`).
+- **2026-11-02:** Phase 7 approved. Decisions confirmed as implemented: 2-minute minimum between unprompted lines; a paused focus session counts as idle; nap "z" letters stay plain text; equip thank-you lines never imply that missing accessory artwork is visible. **Next: Phase 8.**

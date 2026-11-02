@@ -1,6 +1,8 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useAnimate, useReducedMotion } from 'motion/react'
+import type { KoalaMotion, KoalaTempo } from '../../core/koala/brain'
 import { accessoryArt, HOUSE_GRID, koalaPoses, type KoalaFrame, type KoalaPoseName } from './manifest'
+import { koalaMotion } from './motions'
 import './koala.css'
 
 interface KoalaProps {
@@ -14,20 +16,34 @@ interface KoalaProps {
   figureSizes: string
   /** Breathing + blinking. */
   alive?: boolean
-  /** Tap to squish. */
-  interactive?: boolean
+  /** Makes Koa a button; the reaction comes back through `motion`. */
+  onTap?: () => void
   /** Draw the soft contact shadow under the feet. */
   shadow?: boolean
-  /** Increment to make Koa do a happy little hop (e.g. when coins are earned). */
-  hop?: number
+  /** The latest motion to play (a new `seq` plays it again). Transforms of the art only. */
+  motion?: KoalaMotion | null
+  /** Hold the approved blink frame (napping). */
+  eyesClosed?: boolean
+  /** Breathing and blink pace. */
+  tempo?: KoalaTempo
   /** Ids of equipped items. Items without artwork for this pose are not drawn. */
   wearing?: readonly string[]
   className?: string
+  /** Drawn over the figure, unaffected by its motion (speech bubble, sleep glyphs). */
+  children?: ReactNode
 }
 
 const BLINK_MS = 140
+const SLOW_BLINK_MS = 520
 
-function useBlink(enabled: boolean) {
+/** Seconds between blinks: calmer while focusing or resting. */
+const BLINK_GAP: Record<KoalaTempo, { min: number; spread: number }> = {
+  normal: { min: 3000, spread: 4000 },
+  calm: { min: 5000, spread: 4000 },
+  sleepy: { min: 5000, spread: 4000 },
+}
+
+function useBlink(enabled: boolean, tempo: KoalaTempo) {
   const [closed, setClosed] = useState(false)
 
   useEffect(() => {
@@ -35,7 +51,7 @@ function useBlink(enabled: boolean) {
     let timer: number | undefined
 
     const schedule = () => {
-      const wait = 3000 + Math.random() * 4000
+      const wait = BLINK_GAP[tempo].min + Math.random() * BLINK_GAP[tempo].spread
       timer = window.setTimeout(() => {
         if (document.visibilityState === 'visible') {
           const double = Math.random() < 0.2
@@ -52,9 +68,27 @@ function useBlink(enabled: boolean) {
 
     schedule()
     return () => window.clearTimeout(timer)
-  }, [enabled])
+  }, [enabled, tempo])
 
   return closed
+}
+
+/** A slow, contented blink, cued by the `slowBlink` motion. */
+function useSlowBlink(motion: KoalaMotion | null | undefined) {
+  const [closedFor, setClosedFor] = useState<number | null>(null)
+  const cue = motion?.name === 'slowBlink' ? motion.seq : null
+
+  useEffect(() => {
+    if (cue === null) return
+    const close = window.setTimeout(() => setClosedFor(cue), 0)
+    const open = window.setTimeout(() => setClosedFor(null), SLOW_BLINK_MS)
+    return () => {
+      window.clearTimeout(close)
+      window.clearTimeout(open)
+    }
+  }, [cue])
+
+  return closedFor !== null
 }
 
 function srcSet(frame: KoalaFrame) {
@@ -66,11 +100,14 @@ export function Koala({
   width,
   figureSizes,
   alive = true,
-  interactive = false,
+  onTap,
   shadow = true,
-  hop = 0,
+  motion,
+  eyesClosed = false,
+  tempo = 'normal',
   wearing = [],
   className,
+  children,
 }: KoalaProps) {
   const { figure, frames: poseFrames } = koalaPoses[pose]
 
@@ -89,7 +126,9 @@ export function Koala({
   const back = overlays.filter((o) => o.layer === 'back')
   const front = overlays.filter((o) => o.layer === 'front')
   const reduceMotion = useReducedMotion()
-  const blinking = useBlink(alive && Boolean(blinkFrame))
+  const blinking = useBlink(alive && Boolean(blinkFrame) && !eyesClosed, tempo)
+  const slowBlinking = useSlowBlink(alive ? motion : null)
+  const eyesShut = Boolean(blinkFrame) && (eyesClosed || slowBlinking)
   const [scope, animate] = useAnimate()
 
   const { canvas } = HOUSE_GRID
@@ -108,27 +147,18 @@ export function Koala({
     '--img-top': `${(-figure.y / figure.height) * 100}%`,
   } as CSSProperties
 
+  // Play each new motion once. Reduced motion: no movement at all (eyes and bubbles still work).
+  const motionSeq = motion?.seq ?? 0
   useEffect(() => {
-    if (hop === 0 || !scope.current || reduceMotion) return
-    animate(
-      scope.current,
-      { y: [0, -22, 0, -6, 0], scaleY: [1, 1.04, 0.94, 1.01, 1], scaleX: [1, 0.97, 1.05, 1, 1] },
-      { duration: 0.75, ease: 'easeOut', delay: 0.1 },
-    )
-  }, [hop, animate, scope, reduceMotion])
-
-  const squish = () => {
-    if (!scope.current) return
-    if (reduceMotion) return
-    animate(
-      scope.current,
-      { scaleX: [1, 1.06, 0.98, 1], scaleY: [1, 0.92, 1.03, 1] },
-      { duration: 0.5, ease: 'easeOut' },
-    )
-  }
+    if (!motion || !scope.current || reduceMotion) return
+    const spec = koalaMotion(motion.name, motion.dir)
+    if (spec) animate(scope.current, spec.keyframes, spec.options)
+    // Only a new seq should replay; the motion object is otherwise stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [motionSeq, animate, scope, reduceMotion])
 
   const figureContent = (
-    <div className={`koala__breath${alive && !reduceMotion ? ' is-breathing' : ''}`}>
+    <div className={`koala__breath${alive && !reduceMotion ? ' is-breathing' : ''}`} data-tempo={tempo}>
       {back.map((o) => (
         <img
           key={o.id}
@@ -152,14 +182,14 @@ export function Koala({
       />
       {blinkFrame && (
         <img
-          className="koala__img koala__img--blink"
+          className={`koala__img koala__img--blink${eyesShut ? ' is-soft' : ''}`}
           src={blinkFrame.src}
           srcSet={srcSet(blinkFrame)}
           sizes={sizes}
           alt=""
           draggable={false}
           decoding="async"
-          style={{ opacity: blinking ? 1 : 0 }}
+          style={{ opacity: blinking || eyesShut ? 1 : 0 }}
         />
       )}
       {front.map((o) => (
@@ -180,13 +210,13 @@ export function Koala({
   return (
     <div className={`koala${className ? ` ${className}` : ''}`} style={style}>
       {shadow && <div className="koala__shadow" aria-hidden="true" />}
-      {interactive ? (
+      {onTap ? (
         <button
           ref={scope}
           type="button"
           className="koala__figure koala__figure--button"
           aria-label="Koa the koala. Tap to say hi."
-          onClick={squish}
+          onClick={onTap}
         >
           {figureContent}
         </button>
@@ -195,6 +225,7 @@ export function Koala({
           {figureContent}
         </div>
       )}
+      {children}
     </div>
   )
 }

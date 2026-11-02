@@ -1,8 +1,7 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { isInProgress, type TimerMode } from '../../core/timer/engine'
 import { modeLabels, timerDefaults } from '../../config/timerDefaults'
-import { Koala } from '../../features/koala/Koala'
-import { walletStore } from '../../features/rewards/store'
+import { KoaCompanion } from '../../features/koala/KoaCompanion'
 import { wardrobeStore } from '../../features/shop/store'
 import { CycleLeaves, SkipConfirm, TimerControls, TimerDisplay } from '../../features/timer/TimerFace'
 import { useTimer } from '../../features/timer/useTimer'
@@ -20,9 +19,7 @@ export function HomeScreen() {
   const timer = useTimer()
   const { state } = timer
   const [confirmingSkip, setConfirmingSkip] = useState(false)
-  const [hop, setHop] = useState(0)
   const wardrobe = useSyncExternalStore(wardrobeStore.subscribe, wardrobeStore.getState)
-  useEffect(() => walletStore.onGrant(() => setHop((h) => h + 1)), [])
   const inProgress = isInProgress(state)
 
   const onSkip = () => {
@@ -48,12 +45,12 @@ export function HomeScreen() {
           progress={timer.progress}
           label={`${modeLabels[state.mode]} progress`}
         />
-        <Koala
+        <KoaCompanion
           className="home__koala"
           width="calc(var(--stage) * 0.7)"
           figureSizes="(min-width: 960px) 308px, (min-width: 600px) 350px, 60vw"
           interactive
-          hop={hop}
+          speaks
           wearing={Object.values(wardrobe).filter((id): id is string => id !== null)}
         />
       </div>

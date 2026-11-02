@@ -33,6 +33,15 @@
   animation: koala-breathe 4.2s var(--ease-in-out) infinite;
 }
 
+/* Slower, deeper-feeling breaths while focusing, resting or napping. */
+.koala__breath.is-breathing[data-tempo='calm'] {
+  animation-duration: 5.4s;
+}
+
+.koala__breath.is-breathing[data-tempo='sleepy'] {
+  animation-duration: 6.8s;
+}
+
 .koala__img {
   position: absolute;
   width: var(--img-w);
@@ -46,6 +55,11 @@
 
 .koala__img--blink {
   transition: none;
+}
+
+/* Eyes drifting shut (slow blink, falling asleep) instead of a snap blink. */
+.koala__img--blink.is-soft {
+  transition: opacity var(--dur-slow) var(--ease-in-out);
 }
 
 /* Soft contact shadow, drawn by the app so it matches every room. */

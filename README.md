@@ -4,7 +4,7 @@ Koa is a cozy Pomodoro timer with a koala companion. Focus sessions earn **Coins
 
 It's built as a web app for **iPhone first** (it also works on iPad and desktop browsers). Installable PWA support and offline use are planned.
 
-> **Status:** early development. Phases 1–6 of 10 are complete. Phase 7 (Koa's personality and interactions) is next and has not started. See [`docs/roadmap.md`](docs/roadmap.md).
+> **Status:** early development. Phases 1–7 of 10 are complete. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Features
 
@@ -28,14 +28,20 @@ It's built as a web app for **iPhone first** (it also works on iPad and desktop 
 - The wallet keeps earned and spent coins in separate records. The balance is always calculated from them, and spending never touches earned rewards
 
 **Koa**
-- A soft 3D plush koala that breathes, blinks, and squishes when tapped
+- A soft 3D plush koala that breathes and blinks
+- Little idle habits: a sway, a curious tilt, a stretch, a slow blink, and the occasional short comment
+- Taps get different reactions (a squish, a wiggle, a bounce). Tap quickly and Koa giggles, then gets startled
+- Short speech bubbles for greetings, breaks and finished sessions, plus a hint when you can afford something in the shop
+- Calm during focus: no chatter, no wandering, slower breathing
+- A gentle hop and a kind word when a session finishes (a bigger one for a full cycle or the daily goal)
+- Dozes off when you've been away for a while, and wakes up when you're back
 - Respects `prefers-reduced-motion`
 - Everything is saved locally in the browser (LocalStorage). Damaged save data is validated and safely reset
 
 ## Current limitations
 
 - **Accessory artwork is not implemented yet.** You can buy and wear items, and your outfit is saved, but Koa can't show accessories until their artwork is made. Shop cards show a color swatch and "Artwork coming soon" instead. Nothing is drawn as a stand-in. The required files are listed in [`docs/phase-6/accessory-assets.md`](docs/phase-6/accessory-assets.md).
-- Koa currently has a single pose (sitting idle, plus a blink frame). Study, rest, celebrate and other poses come with a later art pass.
+- Koa currently has a single pose (sitting idle, plus a blink frame). Personality is expressed through gentle movement of that pose and its blink frame; study, rest, celebrate and other poses come with a later art pass.
 - The current Koa artwork is a **provisional** master with known proportion deviations from the design sheet.
 - The Stats and Settings tabs are placeholders. Custom timer durations and an adjustable daily goal are planned for Phase 8.
 - There are no system notifications or offline/PWA install yet.
@@ -51,7 +57,7 @@ It's built as a web app for **iPhone first** (it also works on iPad and desktop 
 | 4 | Pomodoro timer | ✅ |
 | 5 | Coins and rewards | ✅ |
 | 6 | Shop and customization | ✅ |
-| 7 | Koa's personality and interactions | Next |
+| 7 | Koa's personality and interactions | ✅ |
 | 8 | Statistics and settings (custom durations, daily goal, notifications) | Planned |
 | 9 | PWA, offline support, mobile optimization | Planned |
 | 10 | Testing and polish | Planned |

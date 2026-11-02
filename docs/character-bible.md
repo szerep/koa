@@ -127,6 +127,23 @@ A small **finite state machine** in `src/core/koala/` decides what the koala is 
 - **Taps:** one tap gives a happy reaction plus a squish. Five taps within 3s gives Surprised. A cooldown prevents spam.
 - **Speech bubbles:** come from a line pool keyed by context (greeting, break, celebrate, idle, shop hint). At most one bubble per about 90s, and it auto-dismisses after 3.5s.
 
+### As built in Phase 7 (only the idle frames exist)
+
+The machine lives in `src/core/koala/brain.ts`, with tuning in `src/config/koalaBehavior.ts` and lines in `src/config/koalaLines.ts`. Poses that don't exist yet (wave, study, rest, celebrate, look, drink) are **not substituted**. Every behavior is either a transform of the approved idle frame (sway, tilt, stretch, wiggle, hop, squish) or uses the approved blink frame (slow blink, eyes closed while napping). When new poses pass their gates, the brain's states map onto them without rule changes.
+
+| Situation | What Koa does |
+|---|---|
+| **App opens** | A time-of-day greeting after 1.2s (skipped during focus, or if Koa is already celebrating). No wave pose yet. |
+| **Idle** | Every 12–25s a weighted ambient action: sway, tilt, stretch, slow blink, wiggle, or a short line. Never the same action twice in a row. |
+| **Speech, unprompted** | At most once every **2 minutes** (raised from 90s to keep Koa subtle). Shop hints only when something unowned is affordable. Lines aren't repeated until 6 others have been said. |
+| **Tap** | A squish, wiggle or bounce, never the same twice in a row; sometimes a short reply (at most one every 20s). The 3rd quick tap tickles (giggle + line), the 5th within 3s startles Koa (jump + "Whoa!"), then 4s of soft squishes only. |
+| **Focus running** | Koa settles in, then stays calm: slower breathing and blinks, no ambient actions, no speech, no naps. Taps get a soft squish at most every 1.2s. |
+| **Break running or paused** | A stretch and a break suggestion (a long-break line after a cycle), calmer ambient actions every 18–35s, calm tempo. |
+| **Session finished** | A hop with the coin fly-up (a double hop for a cycle or the daily goal). The line waits until the coin labels have floated away (2.3–3s) so they never overlap. A finished break gets a stretch and "Break's over". |
+| **No input** | Dozes off after 5 minutes idle (3 in a break, never during focus): eyes closed (held blink frame), slow breathing, drifting "z" glyphs. Any input wakes Koa with a stretch and a line; that same touch doesn't also count as a tap. |
+| **Item equipped** | Show-off wiggle and a thank-you line (in the shop the toast speaks; the line shows on Home if you return within 3.5s). |
+| **Reduced motion** | No movement at all; blinks, eyes closed, bubbles (fade) and static "z" glyphs remain. |
+
 ## 5. Accessories (layering approach)
 
 *Implemented in Phase 6. Replaces the original anchor-offset plan.*
@@ -152,7 +169,7 @@ All animation runs on the GPU (transform and opacity only) and respects reduced 
 | **Breathing** | A 4s CSS loop scaling the koala from 1 to 1.015 on the Y axis, from the feet. It runs in every state except Celebrating. |
 | **Blink** | Swap to the `_blink` frame for 140ms at random intervals of 3–7s. This works because frames are pixel-aligned. |
 | **Pose changes** | Crossfade two stacked `<img>`s over 300ms with a small scale "settle" (0.98 to 1). Every pose is preloaded with `decode()` so nothing flashes. |
-| **Tap squish** | A spring on scale (0.94 to 1.04 to 1). |
+| **Tap squish** | A spring on scale (0.94 to 1.04 to 1). Tap reactions, ambient actions and celebrations are Motion keyframes in `src/features/koala/motions.ts` (transforms only). |
 | **Celebration** | A short hop on the Y axis, honey and eucalyptus sparkle particles (about 12 DOM nodes), and a coin fly-up to the coin pill. |
 | **Speech bubble** | Pops in with scale and fade, positioned above Koa's head. |
 | **Sleep "zZz"** | Three small glyphs drifting upward on a CSS loop. |

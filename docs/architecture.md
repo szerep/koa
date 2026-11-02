@@ -4,7 +4,7 @@
 
 ## Principles
 
-1. **Pure core, thin UI.** Timer math, reward rules and shop rules live in `src/core/` as plain TypeScript with no React or DOM imports. They're deterministic, take `now` as a parameter, return new state plus events, and are unit tested. The koala state machine (Phase 7) and stats (Phase 8) will follow the same pattern.
+1. **Pure core, thin UI.** Timer math, reward rules and shop rules live in `src/core/` as plain TypeScript with no React or DOM imports. They're deterministic, take `now` as a parameter, return new state plus events, and are unit tested. The koala state machine (Phase 7) follows the same pattern, and stats (Phase 8) will too.
 2. **Small stores per feature.** Each feature has a tiny framework-agnostic store (`getState` / `subscribe` / actions) that React reads through `useSyncExternalStore`. There's no Redux or Zustand. Stores apply core transitions, persist the result and broadcast events.
 3. **Storage behind an interface.** `StorageAdapter` (LocalStorage today) keeps IndexedDB or cloud sync possible later without touching features.
 4. **Data, not code, for content.** Timer defaults, reward values, the shop catalog and the character manifest are typed config.
@@ -17,7 +17,7 @@ src/
   main.tsx                  # mounts the app; calls connectFeatures() first
   app/
     App.tsx                 # shell: top bar, tab screens, bottom nav, reward overlay
-    connect.ts              # one-time wiring: timer → rewards, cross-tab refresh
+    connect.ts              # one-time wiring: timer → rewards, timer/wallet/input → Koa, cross-tab refresh
     useHashTab.ts           # tab state mirrored to location.hash (#/shop)
     useTimerAmbience.ts     # tab title countdown, focus-mode dimming, completion announcement
     screens/                # HomeScreen, ShopScreen, ComingSoonScreen (Stats, Settings)
@@ -26,18 +26,21 @@ src/
     timer/restore.ts        # validate/repair persisted timer state
     rewards/wallet.ts       # earned ledger, spending, derived totals, reward rules
     shop/shop.ts            # purchase, ownership, wardrobe (equip/unequip), restore
+    koala/brain.ts          # Koa's behavior state machine (ambient, taps, speech, naps)
+    koala/context.ts        # timer state → Koa context (idle / focus / break)
     time.ts                 # local-day keys
   features/                 # React-facing stores, hooks and components per domain
     timer/                  # timerStore, store (singleton), useTimer, TimerFace, format
     rewards/                # walletStore, store, RewardLayer (coin fly-up)
     shop/                   # wardrobeStore, store
-    koala/                  # manifest.ts (poses + accessory art), Koala.tsx
+    koala/                  # manifest.ts (poses + accessory art), Koala.tsx (rendering + motions),
+                            # koalaStore/store (brain + ticking), KoaCompanion (bubble, nap glyphs)
   ui/                       # design-system primitives: Button/IconButton, SegmentedControl,
                             # ProgressRing, CoinPill, BottomNav, Card, glyphs (leaf, coin, wordmark)
   storage/
     adapter.ts              # StorageAdapter; localStorageAdapter; createMemoryAdapter (tests)
     persistence.ts          # versioned save (koa:v1), slices, migrations, backup
-  config/                   # timerDefaults.ts, rewards.ts, catalog.ts
+  config/                   # timerDefaults.ts, rewards.ts, catalog.ts, koalaBehavior.ts, koalaLines.ts
   styles/                   # tokens.css (design tokens), base.css (reset, fonts)
 ```
 
@@ -107,7 +110,15 @@ interface Wallet {
 ## Character rendering (`src/features/koala/`)
 
 - **House grid:** every frame is 1024×1536, with the axis at x = 512 and the ground line at y = 1400. `koalaPoses` in `manifest.ts` lists each pose's visible figure box and frames, `base` and `blink`. Only `idle` exists today.
-- **`<Koala>`** draws a contact shadow, then back overlays, the pose frame (or an outfit's frame), the blink frame and front overlays. It handles breathing (CSS), random blinks, tap squish and a hop on rewards or equips (Motion), and respects reduced motion. Images use `srcset` with 512 and 1024 exports.
+- **`<Koala>`** draws a contact shadow, then back overlays, the pose frame (or an outfit's frame), the blink frame and front overlays. It handles breathing (CSS, paced by `tempo`), random blinks, held eyes (`eyesClosed`, using the approved blink frame) and plays the `motion` it's given (Motion keyframes from `motions.ts`, transforms only). Reduced motion: no movement at all. Images use `srcset` with 512 and 1024 exports.
+- **`<KoaCompanion>`** reads the koala store and renders `<Koala>` plus, on Home, the speech bubble and the sleepy "z" glyphs. The Shop preview uses it without speech.
+
+## Koa's personality (`src/core/koala/`, Phase 7)
+
+- **Brain** (`brain.ts`): pure transitions `(state, …, now, env) => state`, where `env` holds the tuning (`config/koalaBehavior.ts`), the line pools (`config/koalaLines.ts`) and a random source (seeded in tests). Inputs: `setContext`, `tap`, `activity`, `celebrate`, `breakOver`, `showOff`, `greet`, `tick`. Output via `present(state)`: `{ tempo, eyesClosed, motion, bubble }`.
+- **Store** (`features/koala/koalaStore.ts`): not persisted; ticks once a second only while subscribed and visible; skips re-renders for input that changes nothing visible.
+- **Wiring** (`app/connect.ts`): wallet grants → `celebrate` (session / cycle / daily goal); a finished break → `breakOver`; timer state → `setContext` via `koalaContextFor`; any `pointerdown`/`keydown` → `activity`; a greeting 1.2s after launch. The shop calls `showOff` on equip.
+- Rules are in the character bible §4.
 - **Accessories:** `accessoryArt` in `manifest.ts`, canvas-aligned frames (see character bible §5). It's **empty: no accessory artwork exists yet.**
 
 ## Dependencies

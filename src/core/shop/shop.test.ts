@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createWallet, restoreWallet, rewardSession, type Wallet } from '../rewards/wallet'
 import type { SessionCompleted } from '../timer/engine'
 import {
+  canAffordAnything,
   createWardrobe,
   equip,
   isEquipped,
@@ -181,5 +182,20 @@ describe('wardrobe', () => {
 
   it.each([undefined, null, 'beanie', []])('restore falls back to an empty wardrobe for %j', (raw) => {
     expect(restoreWardrobe(raw, catalog, rich())).toEqual(createWardrobe())
+  })
+})
+
+describe('canAffordAnything', () => {
+  it('is false with too few coins and true once an unowned item is affordable', () => {
+    expect(canAffordAnything(createWallet(), catalog)).toBe(false)
+    expect(canAffordAnything(earned(5), catalog)).toBe(true) // 175 coins
+  })
+
+  it('ignores items that are already owned', () => {
+    const bought = purchase(earned(5), beanie, T)
+    if (!bought.ok) throw new Error('setup')
+    // 55 coins left: nothing else is affordable, and the beanie is owned.
+    expect(canAffordAnything(bought.wallet, catalog)).toBe(false)
+    expect(canAffordAnything(bought.wallet, [beanie])).toBe(false)
   })
 })

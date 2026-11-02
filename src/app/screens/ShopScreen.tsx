@@ -10,7 +10,8 @@ import {
   type ItemCategory,
   type ShopItem,
 } from '../../core/shop/shop'
-import { Koala } from '../../features/koala/Koala'
+import { KoaCompanion } from '../../features/koala/KoaCompanion'
+import { koalaStore } from '../../features/koala/store'
 import { hasAccessoryArt } from '../../features/koala/manifest'
 import { walletStore } from '../../features/rewards/store'
 import { wardrobeStore } from '../../features/shop/store'
@@ -26,7 +27,6 @@ export function ShopScreen() {
   const wardrobe = useSyncExternalStore(wardrobeStore.subscribe, wardrobeStore.getState)
   const [category, setCategory] = useState<ItemCategory>('hats')
   const [notice, setNotice] = useState<{ id: number; text: string } | null>(null)
-  const [hop, setHop] = useState(0)
   const noticeId = useRef(0)
 
   const wearing = SLOTS.flatMap((slot) => {
@@ -49,7 +49,7 @@ export function ShopScreen() {
     const result = walletStore.purchase(item)
     if (result.ok) {
       wardrobeStore.equip(item) // put it on right away; easy to take off again
-      setHop((h) => h + 1)
+      koalaStore.showOff()
       say(`${item.name} is yours. Koa is wearing it now.`)
     } else if (result.reason === 'insufficientFunds') {
       say(`You need ${shortfall(result.wallet, item)} more coins for the ${item.name.toLowerCase()}.`)
@@ -63,7 +63,7 @@ export function ShopScreen() {
       wardrobeStore.unequip(item.slot)
       say(`Took off the ${item.name.toLowerCase()}.`)
     } else if (wardrobeStore.equip(item).ok) {
-      setHop((h) => h + 1)
+      koalaStore.showOff()
       say(`Koa is wearing the ${item.name.toLowerCase()}.`)
     }
   }
@@ -72,7 +72,7 @@ export function ShopScreen() {
     <div className="shop">
       <section className="shop__preview" aria-labelledby="shop-title">
         <div className="shop__koala">
-          <Koala width="clamp(120px, 34vw, 190px)" figureSizes="(min-width: 960px) 190px, 34vw" hop={hop} wearing={wearing.map((i) => i.id)} />
+          <KoaCompanion width="clamp(120px, 34vw, 190px)" figureSizes="(min-width: 960px) 190px, 34vw" wearing={wearing.map((i) => i.id)} />
         </div>
         <div className="shop__outfit">
           <h1 id="shop-title" className="shop__title">

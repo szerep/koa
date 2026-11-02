@@ -3,7 +3,7 @@
 Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and spend them on accessories for Koa. It should look and feel like a polished indie mobile game, not a productivity dashboard.
 
 - **Primary target:** iPhone (Safari and, from Phase 9, an installed PWA). It must also work on iPad and desktop browsers.
-- **Status:** Phases 1–6 are complete and approved. **Phase 7 (personality and interactions) is next and has not started.** See `docs/roadmap.md`.
+- **Status:** Phases 1–7 are complete and approved. **Next: Phase 8 (statistics and settings), not started.** See `docs/roadmap.md`.
 
 ## Workflow
 
@@ -50,18 +50,19 @@ src/core/      pure TypeScript logic, no React/DOM, unit tested
   timer/       engine.ts (state machine), restore.ts (validate saved state)
   rewards/     wallet.ts (earned ledger, spending, derived totals, reward rules)
   shop/        shop.ts (purchase, ownership, wardrobe)
+  koala/       brain.ts (Koa's behavior state machine), context.ts (timer → Koa context)
   time.ts      local-day keys
 src/features/  framework-agnostic stores (getState/subscribe/actions) + React hooks/components
   timer/ rewards/ shop/ koala/
 src/app/       App shell, screens, connect.ts (feature wiring), hash-based tabs
 src/ui/        design-system primitives (Button, SegmentedControl, ProgressRing, CoinPill, BottomNav, Card, glyphs)
 src/storage/   StorageAdapter + versioned save (koa:v1)
-src/config/    timerDefaults.ts, rewards.ts, catalog.ts
+src/config/    timerDefaults.ts, rewards.ts, catalog.ts, koalaBehavior.ts, koalaLines.ts
 src/styles/    tokens.css (design tokens), base.css
 ```
 
 - **Pure core, thin UI.** Business rules live in `src/core/` and take `now` as a parameter. Components present state and call store actions.
-- **Feature stores** are read with `useSyncExternalStore`. Features communicate through events; `src/app/connect.ts` wires the timer's `sessionCompleted` event to the wallet. It runs once in `main.tsx`, before render.
+- **Feature stores** are read with `useSyncExternalStore`. Features communicate through events; `src/app/connect.ts` wires the timer's `sessionCompleted` event to the wallet, and the timer, wallet grants and user input to Koa's brain. It runs once in `main.tsx`, before render.
 - **Persistence:**
   - One LocalStorage key, `koa:v1` = `{ version, timer, wallet, wardrobe }`, read and written only through `src/storage/`. **Components never touch `localStorage`.**
   - Each slice is validated on load (`restoreTimer`, `restoreWallet`, `restoreWardrobe`), so corrupt data resets only that slice. Unreadable or future-version saves go to `koa:backup`.
@@ -113,6 +114,14 @@ src/styles/    tokens.css (design tokens), base.css
   - **Hoodie recolors** (approved clothing option A) are deferred. Producing them by recoloring the Master's hoodie in code needs explicit approval first.
 - **Art pipeline:** ChatGPT ImageGen produces candidates into `art/master/candidates/`. The scripts in `scripts/art/` normalize them to the house grid and export WebP. Don't generate new character art unless asked.
 
+## Koa's personality (Phase 7)
+
+- **Brain:** `src/core/koala/brain.ts`, pure and seeded-random in tests. Rules are in character bible §4 ("As built in Phase 7"). Tuning is in `src/config/koalaBehavior.ts`, lines in `src/config/koalaLines.ts`.
+- **Existing art only.** Behaviors are transforms of the idle frame (`src/features/koala/motions.ts`) or use the approved blink frame (slow blink, eyes closed while napping). Missing poses are never faked.
+- **Focus is sacred:** no ambient actions, speech or naps; taps get a rate-limited soft squish.
+- Unprompted speech at most every 2 minutes; celebration lines wait for the coin labels to clear.
+- `<KoaCompanion>` renders the brain on Home (with bubble and "z" glyphs) and in the Shop preview (no speech). The brain isn't persisted.
+
 ## Visual identity
 
 - Follow `docs/design-brief.md`. **Colors come only from tokens** in `src/styles/tokens.css`; never hard-code colors in components. Shop item swatches in the catalog are item data, not UI colors.
@@ -129,7 +138,6 @@ src/styles/    tokens.css (design tokens), base.css
 
 ## Next steps
 
-- **Phase 7:** koala state machine, ambient behavior, tap reactions, speech bubbles, nap on inactivity, show-off on equip. It must work with the existing idle frames until new poses are produced, and never substitute missing art.
 - **Phase 8:**
   - Stats from a session history.
   - Settings (`docs/phase-8/settings-plan.md`): custom focus, short break and long break durations (R1), adjustable daily goal (R2), notifications, wake lock, sounds, data export and reset.

@@ -59,6 +59,11 @@
   --accent-strong: var(--euca-700);
   --focus-ring: var(--euca-700);
 
+  /* Koa's speech bubble (blush tint, per the brief) and sleepy glyphs */
+  --bubble-bg: var(--blush-200);
+  --bubble-ink: var(--bark-700);
+  --nap-ink: var(--fur-600);
+
   /* Type */
   --font-display: 'Fredoka Variable', 'Fredoka', ui-rounded, system-ui, sans-serif;
   --font-ui: 'Nunito Sans Variable', 'Nunito Sans', system-ui, sans-serif;

@@ -55,6 +55,11 @@ export function purchase(wallet: Wallet, item: ShopItem, now: number): PurchaseR
   return spend(wallet, itemKey(item.id), { kind: 'purchase', itemId: item.id, amount: item.price, at: now })
 }
 
+/** True when the wallet can buy at least one catalog item it doesn't own yet. */
+export function canAffordAnything(wallet: Wallet, catalog: readonly ShopItem[]): boolean {
+  return catalog.some((item) => !isOwned(wallet, item.id) && item.price <= wallet.balance)
+}
+
 /** How many more coins are needed to afford `item` (0 if affordable). */
 export function shortfall(wallet: Wallet, item: ShopItem): number {
   return Math.max(0, item.price - wallet.balance)
