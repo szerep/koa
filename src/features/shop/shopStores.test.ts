@@ -8,7 +8,7 @@ import { createWalletStore } from '../rewards/walletStore'
 import { createWardrobeStore } from './wardrobeStore'
 
 const MIN = 60_000
-const rules: RewardRules = { coinsPerFocusMinute: 1, cycleBonus: 30, dailyGoalBonus: 50, dailyGoalMinutes: 100 }
+const rules: RewardRules = { coinsPerFocusMinute: 1, cycleBonus: 30, cycleBonusFullMinutes: 100, dailyGoalBonus: 50, dailyGoalMinutes: 100 }
 const T = new Date(2026, 10, 2, 9).getTime()
 const beanie: ShopItem = { id: 'beanie', name: 'Beanie', category: 'hats', slot: 'head', price: 120, description: '', swatch: '#000' }
 const glasses: ShopItem = { id: 'glasses', name: 'Glasses', category: 'glasses', slot: 'face', price: 180, description: '', swatch: '#000' }
@@ -23,6 +23,7 @@ const session = (): SessionCompleted => ({
   startedAt: T,
   completedAt: T + n * MIN,
   endsCycle: false,
+  cycleFocusMs: 25 * MIN,
 })
 
 function app(storage = createMemoryAdapter()) {

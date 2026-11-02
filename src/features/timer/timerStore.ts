@@ -1,4 +1,5 @@
 import {
+  applyConfig,
   pause,
   reconcile,
   reset,
@@ -34,7 +35,9 @@ function defaultId() {
  * Holds the timer state, applies engine transitions, persists every change and
  * broadcasts timer events. Framework-agnostic; React reads it via useSyncExternalStore.
  */
-export function createTimerStore({ config, storage, now = Date.now, newId = defaultId }: TimerStoreOptions) {
+export function createTimerStore({ config: initialConfig, storage, now = Date.now, newId = defaultId }: TimerStoreOptions) {
+  /** The current settings. Every transition reads it, so new sessions always use the latest. */
+  let config = initialConfig
   let state: TimerState = restoreTimer(loadState(storage).timer, config)
   const listeners = new Set<() => void>()
   const eventListeners = new Set<(event: TimerEvent) => void>()
@@ -94,5 +97,17 @@ export function createTimerStore({ config, storage, now = Date.now, newId = defa
     },
 
     selectMode: (mode: TimerMode) => apply(selectMode(state, mode, config)),
+
+    getConfig: () => config,
+
+    /**
+     * New settings (durations, long break interval). A session that hasn't started updates
+     * right away; a running or paused session keeps its length and remaining time.
+     */
+    setConfig(next: TimerConfig) {
+      const previous = config
+      config = next
+      apply(applyConfig(state, config, previous))
+    },
   }
 }

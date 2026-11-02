@@ -105,3 +105,107 @@ describe('timer store', () => {
     expect(second.store.getState()).toMatchObject({ mode: 'longBreak', status: 'idle' })
   })
 })
+
+describe('timer store: settings (setConfig)', () => {
+  const custom: TimerConfig = { durations: { focus: 50, shortBreak: 10, longBreak: 30 }, sessionsPerCycle: 4 }
+
+  it('a fresh install uses 25 / 5 / 20', () => {
+    const { store } = setup()
+    expect(store.getState()).toMatchObject({ mode: 'focus', durationMs: 25 * MIN })
+    expect(store.getConfig()).toEqual(config)
+  })
+
+  it('an idle session updates right away, is saved and notifies', () => {
+    const { store, storage } = setup()
+    let calls = 0
+    store.subscribe(() => calls++)
+    store.setConfig(custom)
+    expect(store.getState()).toMatchObject({ status: 'idle', durationMs: 50 * MIN, remainingMs: 50 * MIN })
+    expect(calls).toBe(1)
+    expect(createTimerStore({ config: custom, storage }).getState()).toEqual(store.getState())
+  })
+
+  it('the same config again changes nothing and does not notify', () => {
+    const { store } = setup()
+    let calls = 0
+    store.subscribe(() => calls++)
+    store.setConfig({ ...config, durations: { ...config.durations } })
+    expect(calls).toBe(0)
+  })
+
+  it('changing the focus length during a running focus session keeps its end time; the next focus uses the new length', () => {
+    const { store, clock, events } = setup()
+    store.toggle() // start at T0
+    const endsAt = store.getState().endsAt
+    clock.now = T0 + 5 * MIN
+    store.setConfig(custom)
+    expect(store.getState()).toMatchObject({ status: 'running', durationMs: 25 * MIN, endsAt })
+
+    clock.now = T0 + 25 * MIN
+    store.sync()
+    // Rewards follow the session's own length (25 min), not the new setting.
+    expect(events[0]).toMatchObject({ type: 'sessionCompleted', mode: 'focus', durationMs: 25 * MIN })
+    expect(store.getState()).toMatchObject({ mode: 'shortBreak', status: 'idle', durationMs: 10 * MIN })
+
+    store.toggle()
+    clock.now += 10 * MIN
+    store.sync()
+    expect(store.getState()).toMatchObject({ mode: 'focus', status: 'idle', durationMs: 50 * MIN })
+  })
+
+  it('a paused session keeps its length and remaining time', () => {
+    const { store, clock } = setup()
+    store.toggle()
+    clock.now = T0 + 10 * MIN
+    store.toggle() // pause with 15 min left
+    store.setConfig(custom)
+    expect(store.getState()).toMatchObject({ status: 'paused', durationMs: 25 * MIN, remainingMs: 15 * MIN })
+
+    clock.now = T0 + 60 * MIN
+    store.toggle() // resume
+    expect(store.getState().endsAt).toBe(T0 + 75 * MIN)
+  })
+
+  it('reset and mode changes after a settings change use the new lengths', () => {
+    const { store, clock } = setup()
+    store.toggle()
+    store.setConfig(custom)
+    clock.now = T0 + MIN
+    store.reset()
+    expect(store.getState()).toMatchObject({ status: 'idle', durationMs: 50 * MIN })
+    store.selectMode('longBreak')
+    expect(store.getState().durationMs).toBe(30 * MIN)
+    store.selectMode('shortBreak')
+    expect(store.getState().durationMs).toBe(10 * MIN)
+  })
+
+  it('the long break interval applies going forward', () => {
+    const { store, clock, events } = setup()
+    const runFocusAndBreak = () => {
+      store.toggle()
+      clock.now = store.getState().endsAt!
+      store.sync()
+      store.toggle()
+      clock.now = store.getState().endsAt!
+      store.sync()
+    }
+    runFocusAndBreak()
+    runFocusAndBreak() // 2 done, focus #3 waiting
+    store.toggle() // focus #3 running
+    store.setConfig({ ...config, sessionsPerCycle: 6 })
+    expect(store.getState()).toMatchObject({ status: 'running', completedInCycle: 2, durationMs: 25 * MIN })
+    clock.now = store.getState().endsAt!
+    store.sync()
+    expect(events.at(-1)).toMatchObject({ endsCycle: false })
+    expect(store.getState()).toMatchObject({ mode: 'shortBreak', completedInCycle: 3 })
+  })
+
+  it('on reload, a waiting session uses the latest saved settings', () => {
+    const { store, storage } = setup()
+    store.toggle()
+    store.skip() // focus skipped; short break waiting (5 min)
+    expect(store.getState()).toMatchObject({ mode: 'shortBreak', status: 'idle', durationMs: 5 * MIN })
+    const reloaded = createTimerStore({ config: custom, storage })
+    expect(reloaded.getState()).toMatchObject({ mode: 'shortBreak', status: 'idle', durationMs: 10 * MIN })
+  })
+})

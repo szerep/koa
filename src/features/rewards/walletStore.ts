@@ -6,6 +6,8 @@ import { loadState, saveSlice } from '../../storage/persistence'
 
 export interface WalletStoreOptions {
   rules: RewardRules
+  /** The daily goal in effect (a setting). Read on every payout; defaults to `rules.dailyGoalMinutes`. */
+  dailyGoalMinutes?: () => number
   storage: StorageAdapter
   now?: () => number
 }
@@ -21,7 +23,7 @@ const sameTotals = (a: Wallet, b: Wallet) =>
   a.totalSpent === b.totalSpent &&
   Object.keys(a.spending).length === Object.keys(b.spending).length
 
-export function createWalletStore({ rules, storage, now = Date.now }: WalletStoreOptions) {
+export function createWalletStore({ rules, dailyGoalMinutes, storage, now = Date.now }: WalletStoreOptions) {
   let wallet: Wallet = restoreWallet(loadState(storage).wallet)
   const listeners = new Set<() => void>()
   const grantListeners = new Set<(grants: Grant[]) => void>()
@@ -49,10 +51,15 @@ export function createWalletStore({ rules, storage, now = Date.now }: WalletStor
       }
     },
 
-    /** Pay for a completed session. Safe to call more than once for the same session. */
+    /**
+     * Pay for a completed session, with the daily goal in effect right now. Safe to call more
+     * than once for the same session. Changing the goal never pays by itself: the goal is only
+     * checked here, when a focus session completes.
+     */
     award(event: SessionCompleted) {
       const latest = restoreWallet(loadState(storage).wallet)
-      const { wallet: next, grants } = rewardSession(latest, event, rules)
+      const current = dailyGoalMinutes ? { ...rules, dailyGoalMinutes: dailyGoalMinutes() } : rules
+      const { wallet: next, grants } = rewardSession(latest, event, current)
       if (grants.length === 0) {
         if (!sameTotals(latest, wallet)) set(latest)
         return

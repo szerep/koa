@@ -17,7 +17,7 @@ import {
 
 const MIN = 60_000
 const T = new Date(2026, 10, 2, 9).getTime()
-const rules = { coinsPerFocusMinute: 1, cycleBonus: 30, dailyGoalBonus: 50, dailyGoalMinutes: 100 }
+const rules = { coinsPerFocusMinute: 1, cycleBonus: 30, cycleBonusFullMinutes: 100, dailyGoalBonus: 50, dailyGoalMinutes: 100 }
 
 const beanie: ShopItem = { id: 'beanie', name: 'Beanie', category: 'hats', slot: 'head', price: 120, description: '', swatch: '#000' }
 const cap: ShopItem = { id: 'cap', name: 'Cap', category: 'hats', slot: 'head', price: 150, description: '', swatch: '#000' }
@@ -37,6 +37,7 @@ function earned(sessions: number): Wallet {
       startedAt: T,
       completedAt: T + i * MIN,
       endsCycle: false,
+      cycleFocusMs: 25 * MIN,
     }
     w = rewardSession(w, event, rules).wallet
   }
@@ -88,6 +89,7 @@ describe('purchase', () => {
       startedAt: T,
       completedAt: T + 60 * MIN,
       endsCycle: false,
+      cycleFocusMs: 25 * MIN,
     }
     const w = rewardSession(afterBuy.wallet, event, rules).wallet
     expect(w).toMatchObject({ totalEarned: 225, totalSpent: 120, balance: 105 })

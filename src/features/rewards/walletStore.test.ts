@@ -6,7 +6,7 @@ import { createTimerStore } from '../timer/timerStore'
 import { createWalletStore } from './walletStore'
 
 const MIN = 60_000
-const rules: RewardRules = { coinsPerFocusMinute: 1, cycleBonus: 30, dailyGoalBonus: 50, dailyGoalMinutes: 100 }
+const rules: RewardRules = { coinsPerFocusMinute: 1, cycleBonus: 30, cycleBonusFullMinutes: 100, dailyGoalBonus: 50, dailyGoalMinutes: 100 }
 const config: TimerConfig = { durations: { focus: 25, shortBreak: 5, longBreak: 20 }, sessionsPerCycle: 4 }
 const MORNING = new Date(2026, 10, 2, 9, 0, 0).getTime()
 

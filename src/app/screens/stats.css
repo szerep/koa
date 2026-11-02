@@ -1,0 +1,324 @@
+/* Stats: a study journal. One column on phones and tablets, two on wide screens. */
+.stats {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  width: 100%;
+  max-width: 600px;
+  margin-inline: auto;
+  grid-template-areas:
+    'title'
+    'today'
+    'figures'
+    'week';
+}
+
+.stats__title {
+  grid-area: title;
+  font-size: var(--text-display);
+  padding-inline: var(--space-1);
+}
+
+.stats-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.stats-card__title {
+  font-size: var(--text-title);
+}
+
+/* Today: the goal ring echoes the timer halo, with today's minutes inside. */
+.stats-today {
+  grid-area: today;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.stats-today__ring {
+  flex: none;
+  width: clamp(124px, 36vw, 156px);
+}
+
+/* On a cream card the halo's cream track would vanish, so it gets the sunken tone here. */
+.stats-today__ring .ring__track {
+  stroke: var(--surface-sunken);
+}
+
+.stats-today__ring .ring__glow {
+  opacity: 0;
+}
+
+.stats-today__figure {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  height: 100%;
+  line-height: 1;
+}
+
+.stats-today__minutes {
+  font-family: var(--font-display);
+  font-size: 2.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+}
+
+.stats-today__of {
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: 700;
+}
+
+.stats-today__text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.stats-today__sessions {
+  color: var(--text-heading);
+  font-weight: 700;
+}
+
+.stats-today__status {
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  text-wrap: pretty;
+}
+
+.stats-today__status[data-done] {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+/* Streak and all-time focus: big Fredoka figures side by side. */
+.stats__figures {
+  grid-area: figures;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.stats-figure {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--space-4) var(--space-4) var(--space-5);
+}
+
+.stats-figure__label {
+  font-family: var(--font-ui);
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.stats-figure__value {
+  margin-block: var(--space-1) var(--space-2);
+  font-family: var(--font-display);
+  font-size: clamp(1.375rem, 5.4vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+  text-wrap: balance;
+}
+
+.stats-figure__note {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  text-wrap: pretty;
+}
+
+/* The week: rounded eucalyptus bars on a soft baseline, with a dashed goal line. */
+.week {
+  grid-area: week;
+  --plot-h: 140px;
+  --label-h: 28px;
+  --headroom: 22px;
+}
+
+.week__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.week__total {
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
+}
+
+.week__legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
+.week__legend-line,
+.week__goal {
+  border-top: 2px dashed var(--honey-500);
+}
+
+.week__legend-line {
+  width: 18px;
+}
+
+.week__plot {
+  position: relative;
+  margin-top: var(--space-3);
+  padding-top: var(--headroom);
+}
+
+.week__goal {
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(var(--label-h) + var(--goal) * var(--plot-h) - 1px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.week__bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+  padding: 0;
+  list-style: none;
+}
+
+.week__day {
+  display: grid;
+  grid-template-rows: var(--plot-h) var(--label-h);
+  justify-items: center;
+}
+
+.week__column {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-bottom: 2px solid var(--cream-200);
+}
+
+.week__bar {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: min(28px, 70%);
+  height: calc(var(--h) * 100%);
+  translate: -50% 0;
+  border-radius: 10px 10px 4px 4px;
+  background: var(--euca-500);
+  transform-origin: bottom;
+  animation: week-grow var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i) * 40ms);
+}
+
+.week__day[data-today] .week__bar {
+  background: var(--euca-700);
+}
+
+/* A day without focus: a small resting nub, so the week still reads as seven days. */
+.week__bar[data-empty] {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--cream-300);
+  animation: none;
+}
+
+.week__value {
+  position: absolute;
+  bottom: calc(var(--h) * 100% + 4px);
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: var(--font-display);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  line-height: 1;
+  z-index: 2;
+}
+
+.week__day[data-goal] .week__value {
+  color: var(--accent-strong);
+}
+
+.week__leaf {
+  color: var(--euca-600);
+}
+
+.week__label {
+  align-self: end;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: 700;
+}
+
+.week__day[data-today] .week__label {
+  color: var(--text-heading);
+}
+
+@keyframes week-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .week__bar {
+    animation: none;
+  }
+}
+
+@media (min-width: 600px) {
+  .stats {
+    gap: var(--space-5);
+  }
+
+  .week {
+    --plot-h: 180px;
+  }
+}
+
+/* Wide screens: today and the figures side by side, the week underneath. */
+@media (min-width: 960px) {
+  .stats {
+    max-width: none;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'title title'
+      'today figures'
+      'week week';
+  }
+
+  .stats-today {
+    padding: var(--space-6);
+  }
+
+  .stats-today__ring {
+    width: 168px;
+  }
+
+  /* Streak and all-time stacked beside the today card, so neither card stretches empty. */
+  .stats__figures {
+    grid-template-columns: 1fr;
+  }
+}

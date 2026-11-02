@@ -22,6 +22,23 @@ describe('persistence', () => {
     expect(JSON.parse(storage.data[STORAGE_KEY])).toEqual({ version: SCHEMA_VERSION, timer: 2, future: 'kept' })
   })
 
+  it('saves the settings slice next to the others', () => {
+    const storage = createMemoryAdapter({
+      [STORAGE_KEY]: JSON.stringify({ version: SCHEMA_VERSION, timer: 1, wallet: 2, wardrobe: 3 }),
+    })
+    saveSlice(storage, 'settings', { sounds: true })
+    expect(loadState(storage)).toEqual({ version: SCHEMA_VERSION, timer: 1, wallet: 2, wardrobe: 3, settings: { sounds: true } })
+  })
+
+  it('loads a pre-Phase 8 save without settings unchanged, with no backup', () => {
+    const old = JSON.stringify({ version: SCHEMA_VERSION, timer: 1, wallet: 2, wardrobe: 3 })
+    const storage = createMemoryAdapter({ [STORAGE_KEY]: old })
+    const loaded = loadState(storage)
+    expect(loaded.settings).toBeUndefined()
+    expect(loaded).toEqual({ version: SCHEMA_VERSION, timer: 1, wallet: 2, wardrobe: 3 })
+    expect(storage.data[BACKUP_KEY]).toBeUndefined()
+  })
+
   it('backs up and resets a corrupt save', () => {
     const storage = createMemoryAdapter({ [STORAGE_KEY]: '{not json' })
     expect(loadState(storage)).toEqual({ version: SCHEMA_VERSION })

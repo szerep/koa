@@ -29,3 +29,7 @@
   color: var(--text-muted);
   text-wrap: pretty;
 }
+
+.soon__action {
+  margin-top: var(--space-3);
+}

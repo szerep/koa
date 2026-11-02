@@ -1,13 +1,16 @@
+import type { ReactNode } from 'react'
 import { Koala } from '../../features/koala/Koala'
 import './coming-soon.css'
 
 interface ComingSoonScreenProps {
   title: string
   message: string
+  /** An optional next step under the message, such as a button. */
+  children?: ReactNode
 }
 
-/** A designed resting state for sections that arrive in later phases. */
-export function ComingSoonScreen({ title, message }: ComingSoonScreenProps) {
+/** A designed resting state with Koa: for empty screens and sections that arrive later. */
+export function ComingSoonScreen({ title, message, children }: ComingSoonScreenProps) {
   return (
     <section className="soon" aria-labelledby="soon-title">
       <div className="soon__figure">
@@ -17,24 +20,7 @@ export function ComingSoonScreen({ title, message }: ComingSoonScreenProps) {
         {title}
       </h1>
       <p className="soon__message">{message}</p>
+      {children && <div className="soon__action">{children}</div>}
     </section>
-  )
-}
-
-export function StatsScreen() {
-  return (
-    <ComingSoonScreen
-      title="Your study journal"
-      message="Finish focus sessions and your study time, streak and weekly progress will show up here."
-    />
-  )
-}
-
-export function SettingsScreen() {
-  return (
-    <ComingSoonScreen
-      title="Settings"
-      message="Timer lengths, your daily goal, sounds and notifications will live here."
-    />
   )
 }

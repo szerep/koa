@@ -33,6 +33,8 @@ export interface TimerState {
   startedAt: number | null
   /** Focus sessions completed in the current cycle (0..sessionsPerCycle). */
   completedInCycle: number
+  /** Focus time completed in the current cycle (scales the cycle bonus). */
+  cycleFocusMs: number
 }
 
 export interface SessionCompleted {
@@ -45,6 +47,8 @@ export interface SessionCompleted {
   completedAt: number
   /** True when this focus session completed the cycle (earns the long break). */
   endsCycle: boolean
+  /** Focus time completed in the cycle so far, this session included. */
+  cycleFocusMs: number
 }
 
 export interface SessionSkipped {
@@ -71,10 +75,13 @@ export function durationFor(mode: TimerMode, config: TimerConfig): number {
 }
 
 /** A fresh, not-yet-started session of `mode`. */
-function idleSession(mode: TimerMode, config: TimerConfig, completedInCycle: number): TimerState {
+function idleSession(mode: TimerMode, config: TimerConfig, completedInCycle: number, cycleFocusMs: number): TimerState {
   const durationMs = durationFor(mode, config)
   // A finished cycle whose long break was abandoned starts over with the next focus session.
-  if (mode === 'focus' && completedInCycle >= config.sessionsPerCycle) completedInCycle = 0
+  if (mode === 'focus' && completedInCycle >= config.sessionsPerCycle) {
+    completedInCycle = 0
+    cycleFocusMs = 0
+  }
   return {
     mode,
     status: 'idle',
@@ -84,11 +91,12 @@ function idleSession(mode: TimerMode, config: TimerConfig, completedInCycle: num
     sessionId: null,
     startedAt: null,
     completedInCycle,
+    cycleFocusMs,
   }
 }
 
 export function createTimer(config: TimerConfig): TimerState {
-  return idleSession('focus', config, 0)
+  return idleSession('focus', config, 0, 0)
 }
 
 const unchanged = (state: TimerState): Transition => ({ state, events: [] })
@@ -152,13 +160,13 @@ export function resume(state: TimerState, now: number): Transition {
 /** Back to the full duration of the current mode. The cycle is kept. */
 export function reset(state: TimerState, config: TimerConfig): Transition {
   if (state.status === 'idle') return unchanged(state) // already at full length
-  return unchanged(idleSession(state.mode, config, state.completedInCycle))
+  return unchanged(idleSession(state.mode, config, state.completedInCycle, state.cycleFocusMs))
 }
 
 /** Pick a mode by hand. Discards any session in progress; the cycle is kept. */
 export function selectMode(state: TimerState, mode: TimerMode, config: TimerConfig): Transition {
   if (mode === state.mode && state.status === 'idle') return unchanged(state)
-  return unchanged(idleSession(mode, config, state.completedInCycle))
+  return unchanged(idleSession(mode, config, state.completedInCycle, state.cycleFocusMs))
 }
 
 /**
@@ -168,10 +176,11 @@ export function selectMode(state: TimerState, mode: TimerMode, config: TimerConf
 export function skip(state: TimerState, config: TimerConfig): Transition {
   const event: SessionSkipped = { type: 'sessionSkipped', sessionId: state.sessionId, mode: state.mode }
   if (state.mode === 'focus') {
-    return { state: idleSession('shortBreak', config, state.completedInCycle), events: [event] }
+    return { state: idleSession('shortBreak', config, state.completedInCycle, state.cycleFocusMs), events: [event] }
   }
-  const cycle = state.mode === 'longBreak' ? 0 : state.completedInCycle
-  return { state: idleSession('focus', config, cycle), events: [event] }
+  const endsCycle = state.mode === 'longBreak'
+  const cycle = endsCycle ? 0 : state.completedInCycle
+  return { state: idleSession('focus', config, cycle, endsCycle ? 0 : state.cycleFocusMs), events: [event] }
 }
 
 /** Finish the running session at its scheduled end and set up the next one (not started). */
@@ -180,7 +189,11 @@ function complete(state: TimerState, config: TimerConfig): Transition {
     return unchanged(state)
   }
   let cycle = state.completedInCycle
-  if (state.mode === 'focus') cycle += 1
+  let cycleFocusMs = state.cycleFocusMs
+  if (state.mode === 'focus') {
+    cycle += 1
+    cycleFocusMs += state.durationMs
+  }
 
   const event: SessionCompleted = {
     type: 'sessionCompleted',
@@ -190,12 +203,16 @@ function complete(state: TimerState, config: TimerConfig): Transition {
     startedAt: state.startedAt,
     completedAt: state.endsAt,
     endsCycle: state.mode === 'focus' && cycle >= config.sessionsPerCycle,
+    cycleFocusMs,
   }
 
   const mode = nextMode(state.mode, cycle, config)
-  if (state.mode === 'longBreak') cycle = 0
+  if (state.mode === 'longBreak') {
+    cycle = 0
+    cycleFocusMs = 0
+  }
 
-  return { state: idleSession(mode, config, cycle), events: [event] }
+  return { state: idleSession(mode, config, cycle, cycleFocusMs), events: [event] }
 }
 
 /**
@@ -209,11 +226,49 @@ export function reconcile(state: TimerState, now: number, config: TimerConfig): 
   return unchanged(state)
 }
 
-/** Apply new durations to a session that hasn't started yet. Sessions in progress keep their length. */
-export function applyConfig(state: TimerState, config: TimerConfig): Transition {
-  if (state.status !== 'idle') return unchanged(state)
-  const durationMs = durationFor(state.mode, config)
+/**
+ * Fit a session that hasn't started yet to `config`: its length follows the configured duration,
+ * and the cycle count is capped at the long break interval. Its mode is `mode` (default: unchanged).
+ */
+export function fitIdleSession(state: TimerState, config: TimerConfig, mode: TimerMode = state.mode): TimerState {
   const completedInCycle = Math.min(state.completedInCycle, config.sessionsPerCycle)
-  if (durationMs === state.durationMs && completedInCycle === state.completedInCycle) return unchanged(state)
-  return unchanged({ ...state, durationMs, remainingMs: durationMs, completedInCycle })
+  const durationMs = durationFor(mode, config)
+  return {
+    mode,
+    status: 'idle',
+    durationMs,
+    endsAt: null,
+    remainingMs: durationMs,
+    sessionId: null,
+    startedAt: null,
+    completedInCycle,
+    cycleFocusMs: state.cycleFocusMs,
+  }
+}
+
+/**
+ * Apply new settings. A session that hasn't started yet is refitted right away (see fitIdleSession).
+ * Sessions in progress (running or paused) keep their length and remaining time; the new settings
+ * decide what comes after them.
+ *
+ * If the long break interval was lowered (`previous` → `config`) to the focus sessions already
+ * done, the cycle is now complete: a waiting focus session or short break becomes the long break
+ * the cycle has earned, so it isn't lost. Without a lowered interval the mode is never changed
+ * (e.g. a short break picked by hand after a full cycle stays a short break).
+ */
+export function applyConfig(state: TimerState, config: TimerConfig, previous: TimerConfig = config): Transition {
+  if (state.status !== 'idle') return unchanged(state)
+  const lowered = config.sessionsPerCycle < previous.sessionsPerCycle
+  const cycleNowComplete = state.completedInCycle >= config.sessionsPerCycle
+  const mode: TimerMode = lowered && cycleNowComplete ? 'longBreak' : state.mode
+  const next = fitIdleSession(state, config, mode)
+  if (
+    next.mode === state.mode &&
+    next.durationMs === state.durationMs &&
+    next.remainingMs === state.remainingMs &&
+    next.completedInCycle === state.completedInCycle
+  ) {
+    return unchanged(state)
+  }
+  return unchanged(next)
 }

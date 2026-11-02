@@ -3,7 +3,7 @@
  *
  * Every payout is recorded in a ledger under a unique key, and a key is paid at most once:
  *   focus:<sessionId>   a completed focus session (coins per focus minute)
- *   cycle:<sessionId>   the focus session that completed a cycle (bonus)
+ *   cycle:<sessionId>   the focus session that completed a cycle (bonus, scaled by the cycle's focus time)
  *   goal:<YYYY-MM-DD>   reaching the daily focus goal (bonus, once per local day)
  * Only completed focus sessions earn anything. Breaks and skipped sessions never do.
  *
@@ -17,8 +17,13 @@ import { dayKey } from '../time'
 export interface RewardRules {
   /** 25 min → 25 coins, 50 min → 50 coins. */
   coinsPerFocusMinute: number
-  /** Paid when a focus session completes the cycle (default: every 4th session). */
+  /** The full cycle bonus, paid when a focus session completes the cycle (default: every 4th session). */
   cycleBonus: number
+  /**
+   * Focus minutes in a cycle that earn the full cycle bonus. Shorter cycles earn a share:
+   * round(cycleBonus × minutes / cycleBonusFullMinutes), never more than cycleBonus.
+   */
+  cycleBonusFullMinutes: number
   /** Paid once per day when the day's focus minutes reach the goal. */
   dailyGoalBonus: number
   dailyGoalMinutes: number
@@ -114,7 +119,18 @@ export function spend(wallet: Wallet, key: string, entry: SpendEntry): SpendResu
   return { ok: true, wallet: withTotals(wallet.ledger, { ...wallet.spending, [key]: entry }) }
 }
 
-/** Apply the rewards for a completed session. Calling it again for the same session changes nothing. */
+/** The cycle bonus for a cycle with `cycleFocusMs` of focus: proportional, rounded, capped at the full bonus. */
+export function cycleBonusFor(cycleFocusMs: number, rules: RewardRules): number {
+  if (!(rules.cycleBonus > 0) || !(rules.cycleBonusFullMinutes > 0)) return 0
+  if (!Number.isFinite(cycleFocusMs) || cycleFocusMs <= 0) return 0
+  const share = cycleFocusMs / 60_000 / rules.cycleBonusFullMinutes
+  return Math.min(rules.cycleBonus, Math.round(rules.cycleBonus * share))
+}
+
+/**
+ * Apply the rewards for a completed session, with the rules in effect now (the daily goal is a
+ * setting). Calling it again for the same session changes nothing.
+ */
 export function rewardSession(wallet: Wallet, event: SessionCompleted, rules: RewardRules): RewardResult {
   if (event.mode !== 'focus') return { wallet, grants: [] }
 
@@ -138,15 +154,16 @@ export function rewardSession(wallet: Wallet, event: SessionCompleted, rules: Re
   grants.push({ key: focusKey, kind: 'focus', amount: focusCoins })
 
   const cycleKey = `cycle:${event.sessionId}`
-  if (event.endsCycle && rules.cycleBonus > 0 && !(cycleKey in next.ledger)) {
+  const cycleCoins = event.endsCycle ? cycleBonusFor(event.cycleFocusMs, rules) : 0
+  if (cycleCoins > 0 && !(cycleKey in next.ledger)) {
     next = credit(next, cycleKey, {
       kind: 'cycle',
-      amount: rules.cycleBonus,
+      amount: cycleCoins,
       at: event.completedAt,
       day,
       sessionId: event.sessionId,
     })
-    grants.push({ key: cycleKey, kind: 'cycle', amount: rules.cycleBonus })
+    grants.push({ key: cycleKey, kind: 'cycle', amount: cycleCoins })
   }
 
   const goalKey = `goal:${day}`

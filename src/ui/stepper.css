@@ -1,0 +1,107 @@
+.stepper {
+  position: relative;
+  display: grid;
+  justify-items: end;
+}
+
+.stepper__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 48px round buttons: comfortably above the 44pt touch minimum. */
+.stepper__button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--bark-700);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.stepper__button svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (hover: hover) {
+  .stepper__button:hover:not(:disabled) {
+    background: var(--cream-300);
+  }
+}
+
+.stepper__button:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.stepper__button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+/* The number with its unit underneath; a fixed width so stepping never shifts the layout. */
+.stepper__value {
+  display: grid;
+  justify-items: center;
+  width: 4.25rem;
+  cursor: text;
+}
+
+.stepper__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-chip);
+  background: transparent;
+  color: var(--text-heading);
+  font-family: var(--font-display);
+  font-size: 2rem; /* never below 16px, so iOS doesn't zoom on focus */
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+  caret-color: var(--accent-strong);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.stepper__input:focus {
+  outline: none;
+  background: var(--surface-sunken);
+}
+
+.stepper__input:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-chip);
+}
+
+.stepper__unit {
+  margin-top: -2px;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* "Adjusted to …": below the controls, without pushing the layout around. */
+.stepper__note {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 2px;
+  color: var(--accent-strong);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  white-space: nowrap;
+}

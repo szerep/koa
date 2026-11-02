@@ -1,7 +1,8 @@
 import { useState, useSyncExternalStore } from 'react'
 import { isInProgress, type TimerMode } from '../../core/timer/engine'
-import { modeLabels, timerDefaults } from '../../config/timerDefaults'
+import { modeLabels } from '../../config/timerDefaults'
 import { KoaCompanion } from '../../features/koala/KoaCompanion'
+import { settingsStore } from '../../features/settings/store'
 import { wardrobeStore } from '../../features/shop/store'
 import { CycleLeaves, SkipConfirm, TimerControls, TimerDisplay } from '../../features/timer/TimerFace'
 import { useTimer } from '../../features/timer/useTimer'
@@ -20,6 +21,7 @@ export function HomeScreen() {
   const { state } = timer
   const [confirmingSkip, setConfirmingSkip] = useState(false)
   const wardrobe = useSyncExternalStore(wardrobeStore.subscribe, wardrobeStore.getState)
+  const { longBreakEvery } = useSyncExternalStore(settingsStore.subscribe, settingsStore.getState)
   const inProgress = isInProgress(state)
 
   const onSkip = () => {
@@ -60,7 +62,7 @@ export function HomeScreen() {
         <CycleLeaves
           mode={state.mode}
           completed={state.completedInCycle}
-          total={timerDefaults.sessionsPerCycle}
+          total={longBreakEvery}
         />
       </div>
 

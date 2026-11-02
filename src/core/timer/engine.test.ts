@@ -147,6 +147,7 @@ describe('reconcile (completion)', () => {
         startedAt: T0,
         completedAt: T0 + 25 * MIN,
         endsCycle: false,
+        cycleFocusMs: 25 * MIN,
       },
     ])
     expect(t.state).toMatchObject({ mode: 'shortBreak', status: 'idle', completedInCycle: 1, sessionId: null })
@@ -318,6 +319,64 @@ describe('selectMode', () => {
   })
 })
 
+describe('cycle focus time (scales the cycle bonus)', () => {
+  it('adds up completed focus sessions only, and the event carries the total', () => {
+    let s = createTimer(config)
+    expect(s.cycleFocusMs).toBe(0)
+    const totals: number[] = []
+    for (let i = 0; i < 8; i++) {
+      const started = start(s, T0, id()).state
+      const done = reconcile(started, started.endsAt!, config)
+      const e = done.events[0]
+      if (e.type === 'sessionCompleted') totals.push(e.cycleFocusMs)
+      s = done.state
+    }
+    // focus, short, focus, short, focus, short, focus (ends cycle), long
+    expect(totals).toEqual([25, 25, 50, 50, 75, 75, 100, 100].map((m) => m * MIN))
+    expect(s).toMatchObject({ mode: 'focus', completedInCycle: 0, cycleFocusMs: 0 }) // after the long break
+  })
+
+  it('uses each session\'s own length (mixed durations)', () => {
+    const fifty: TimerConfig = { ...config, durations: { ...config.durations, focus: 50 } }
+    const first = runToEnd(createTimer(config), T0).state // 25
+    const brk = reconcile(start(first, T0, id()).state, T0 + 5 * MIN, config).state
+    const longer = applyConfig(brk, fifty).state
+    const second = start(longer, T0, id()).state
+    const done = reconcile(second, second.endsAt!, fifty)
+    expect(done.events[0]).toMatchObject({ durationMs: 50 * MIN, cycleFocusMs: 75 * MIN })
+  })
+
+  it('skipped focus sessions add nothing', () => {
+    const running = start(createTimer(config), T0, 'x').state
+    const skipped = skip(running, config).state
+    expect(skipped.cycleFocusMs).toBe(0)
+  })
+
+  it('reset, mode changes and skipping a short break keep it', () => {
+    let s = createTimer(config)
+    for (let i = 0; i < 3; i++) s = runToEnd(s, T0).state // 2 focus done, short break waiting
+    expect(s).toMatchObject({ mode: 'shortBreak', cycleFocusMs: 50 * MIN })
+    expect(reset(start(s, T0, 'r').state, config).state.cycleFocusMs).toBe(50 * MIN)
+    expect(selectMode(s, 'focus', config).state.cycleFocusMs).toBe(50 * MIN)
+    expect(skip(s, config).state).toMatchObject({ mode: 'focus', cycleFocusMs: 50 * MIN })
+  })
+
+  it('starts over when the long break is skipped or abandoned', () => {
+    let s = createTimer(config)
+    for (let i = 0; i < 7; i++) s = runToEnd(s, T0).state // long break waiting
+    expect(s).toMatchObject({ mode: 'longBreak', cycleFocusMs: 100 * MIN })
+    expect(skip(s, config).state).toMatchObject({ completedInCycle: 0, cycleFocusMs: 0 })
+    expect(selectMode(s, 'focus', config).state).toMatchObject({ completedInCycle: 0, cycleFocusMs: 0 })
+  })
+
+  it('is kept when settings refit a waiting session', () => {
+    let s = createTimer(config)
+    for (let i = 0; i < 5; i++) s = runToEnd(s, T0).state // 3 done, short break waiting
+    const fitted = applyConfig(s, { ...config, sessionsPerCycle: 3 }, config).state
+    expect(fitted).toMatchObject({ mode: 'longBreak', cycleFocusMs: 75 * MIN })
+  })
+})
+
 describe('applyConfig', () => {
   const longer: TimerConfig = { ...config, durations: { ...config.durations, focus: 50 } }
 
@@ -330,10 +389,93 @@ describe('applyConfig', () => {
     expect(applyConfig(running, longer).state).toBe(running)
   })
 
-  it('clamps the cycle count when the cycle gets shorter', () => {
+  it('clamps the cycle count when the cycle gets shorter, and the earned long break is up next', () => {
     let s = createTimer(config)
     for (let i = 0; i < 6; i++) s = runToEnd(s, T0).state // focus #4 is up next, 3 done
     expect(s).toMatchObject({ mode: 'focus', completedInCycle: 3 })
-    expect(applyConfig(s, { ...config, sessionsPerCycle: 2 }).state.completedInCycle).toBe(2)
+    expect(applyConfig(s, { ...config, sessionsPerCycle: 2 }, config).state).toMatchObject({
+      mode: 'longBreak',
+      status: 'idle',
+      completedInCycle: 2,
+      durationMs: 20 * MIN,
+      remainingMs: 20 * MIN,
+    })
+  })
+
+  it('a waiting short break becomes the long break when the new interval completes the cycle', () => {
+    let s = createTimer(config)
+    for (let i = 0; i < 5; i++) s = runToEnd(s, T0).state // 3 focus done, short break waiting
+    expect(s).toMatchObject({ mode: 'shortBreak', status: 'idle', completedInCycle: 3 })
+    expect(applyConfig(s, { ...config, sessionsPerCycle: 3 }, config).state).toMatchObject({ mode: 'longBreak', completedInCycle: 3 })
+  })
+
+  it('never changes the mode unless the interval was lowered (a hand-picked short break stays)', () => {
+    let s = createTimer(config)
+    for (let i = 0; i < 7; i++) s = runToEnd(s, T0).state // long break waiting, 4 done
+    const picked = selectMode(s, 'shortBreak', config).state
+    expect(picked).toMatchObject({ mode: 'shortBreak', completedInCycle: 4 })
+    // A change that doesn't touch the interval (e.g. any other setting) leaves it alone.
+    expect(applyConfig(picked, config, config).state).toBe(picked)
+    expect(applyConfig(picked, { ...config, durations: { ...config.durations, shortBreak: 8 } }, config).state).toMatchObject({
+      mode: 'shortBreak',
+      durationMs: 8 * MIN,
+    })
+    // Raising the interval doesn't either.
+    expect(applyConfig(picked, { ...config, sessionsPerCycle: 6 }, config).state.mode).toBe('shortBreak')
+  })
+
+  it('a waiting short break stays a short break when the cycle is not complete', () => {
+    const s = runToEnd(createTimer(config), T0).state // 1 done, short break waiting
+    expect(applyConfig(s, { ...config, sessionsPerCycle: 2 }).state).toMatchObject({ mode: 'shortBreak', completedInCycle: 1 })
+  })
+
+  it('a waiting long break is kept when the interval gets longer (it was earned)', () => {
+    let s = createTimer(config)
+    for (let i = 0; i < 7; i++) s = runToEnd(s, T0).state // 4 done, long break waiting
+    expect(s).toMatchObject({ mode: 'longBreak', completedInCycle: 4 })
+    expect(applyConfig(s, { ...config, sessionsPerCycle: 6 }).state).toMatchObject({ mode: 'longBreak', completedInCycle: 4 })
+  })
+
+  it('updates short and long break lengths of a waiting break', () => {
+    const shortWaiting = runToEnd(createTimer(config), T0).state
+    const longer: TimerConfig = { ...config, durations: { focus: 25, shortBreak: 10, longBreak: 30 } }
+    expect(applyConfig(shortWaiting, longer).state.durationMs).toBe(10 * MIN)
+    let s = createTimer(config)
+    for (let i = 0; i < 7; i++) s = runToEnd(s, T0).state
+    expect(applyConfig(s, longer).state.durationMs).toBe(30 * MIN)
+  })
+
+  it('returns the same state when nothing changes', () => {
+    const s = createTimer(config)
+    expect(applyConfig(s, { ...config }).state).toBe(s)
+    expect(applyConfig(s, { ...config, durations: { ...config.durations, shortBreak: 10 } }).state).toBe(s)
+  })
+
+  it('leaves a paused session untouched, remaining time included', () => {
+    const paused = pause(start(createTimer(config), T0, 'p').state, T0 + 10 * MIN, config).state
+    expect(paused).toMatchObject({ status: 'paused', remainingMs: 15 * MIN })
+    expect(applyConfig(paused, { ...longer, sessionsPerCycle: 2 }).state).toBe(paused)
+  })
+
+  it('a running focus session keeps its end time; the next one uses the new length', () => {
+    const running = start(createTimer(config), T0, 'r').state
+    const kept = applyConfig(running, longer).state
+    expect(kept).toBe(running)
+    const done = reconcile(kept, running.endsAt!, longer)
+    expect(done.events[0]).toMatchObject({ type: 'sessionCompleted', durationMs: 25 * MIN, completedAt: T0 + 25 * MIN })
+    const back = runToEnd(done.state, T0 + 25 * MIN) // the short break
+    expect(back.state).toMatchObject({ mode: 'focus', durationMs: 25 * MIN }) // runToEnd uses `config`
+    expect(applyConfig(back.state, longer).state.durationMs).toBe(50 * MIN)
+  })
+
+  it('the interval in effect when a running focus session ends decides what comes next', () => {
+    let s = createTimer(config)
+    for (let i = 0; i < 4; i++) s = runToEnd(s, T0).state // 2 done, focus #3 waiting
+    const running = start(s, T0, 'third').state
+    const shorter = { ...config, sessionsPerCycle: 3 }
+    expect(applyConfig(running, shorter).state).toBe(running) // the session itself is unchanged
+    const done = reconcile(running, running.endsAt!, shorter)
+    expect(done.events[0]).toMatchObject({ endsCycle: true })
+    expect(done.state).toMatchObject({ mode: 'longBreak', completedInCycle: 3 })
   })
 })

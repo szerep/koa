@@ -1,0 +1,124 @@
+.settings {
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
+  width: 100%;
+  max-width: 600px;
+  margin-inline: auto;
+}
+
+.settings__title {
+  font-size: var(--text-display);
+  padding-inline: var(--space-1);
+}
+
+/* Grouped cream card (design brief §6): plain rows, the same radii and shadow as everywhere else. */
+.settings-card {
+  display: grid;
+  padding: var(--space-5) var(--space-5) var(--space-2);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.settings-card__title {
+  font-size: var(--text-title);
+}
+
+.settings-card__lead {
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  text-wrap: pretty;
+}
+
+/* A session is running or paused: settings still change, but only from the next session. */
+.settings-card__note {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-chip);
+  background: var(--honey-100);
+  color: var(--bark-700);
+  font-size: var(--text-label);
+  font-weight: 600;
+  text-wrap: pretty;
+}
+
+.settings-row {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid var(--cream-200);
+}
+
+.settings-card__title + .settings-row,
+.settings-card__lead + .settings-row,
+.settings-card__note + .settings-row {
+  margin-top: var(--space-2);
+}
+
+.settings-row__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.settings-row__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-row__label {
+  color: var(--text-heading);
+  font-weight: 700;
+}
+
+.settings-row__hint {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  text-wrap: pretty;
+}
+
+/* Quick focus lengths. 44px tall chips, the selected one in eucalyptus. */
+.presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.presets__chip {
+  min-height: 44px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--text-heading);
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .presets__chip:hover {
+    background: var(--cream-300);
+  }
+}
+
+.presets__chip:active {
+  transform: scale(0.96);
+}
+
+.presets__chip[aria-pressed='true'] {
+  background: var(--euca-500);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-small);
+}

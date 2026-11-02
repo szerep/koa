@@ -3,11 +3,12 @@
 Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and spend them on accessories for Koa. It should look and feel like a polished indie mobile game, not a productivity dashboard.
 
 - **Primary target:** iPhone (Safari and, from Phase 9, an installed PWA). It must also work on iPad and desktop browsers.
-- **Status:** Phases 1–7 are complete and approved. **Next: Phase 8 (statistics and settings), not started.** See `docs/roadmap.md`.
+- **Status:** Phases 1–7 are complete and approved. **Phase 8 (statistics and settings) is in progress: Steps 1–8 of 12 are complete and approved (2026-11-03). Next: Step 9 (notifications).** See `docs/roadmap.md` and `docs/phase-8/settings-plan.md`.
 
 ## Workflow
 
 - Work happens in **phases** (`docs/roadmap.md`). Finish one phase, verify it, present it, and **wait for approval** before starting the next. Never implement several phases in one pass.
+- **Phase 8 is done in 12 reviewed steps** (`docs/phase-8/settings-plan.md`, "Implementation sequence"). Do one step at a time, document it in the plan's "Implementation details", then stop for approval. Don't commit or push unless asked.
 - Record important decisions in the roadmap's decisions log and in the relevant doc. Update docs when the implementation changes them.
 - **Before calling a phase done:**
   1. `pnpm test`, `pnpm lint` and `pnpm build` must all pass.
@@ -47,26 +48,29 @@ Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and sp
 
 ```
 src/core/      pure TypeScript logic, no React/DOM, unit tested
-  timer/       engine.ts (state machine), restore.ts (validate saved state)
+  timer/       engine.ts (state machine), restore.ts (validate saved state), wakeLock.ts (when to keep the screen on)
   rewards/     wallet.ts (earned ledger, spending, derived totals, reward rules)
   shop/        shop.ts (purchase, ownership, wardrobe)
   koala/       brain.ts (Koa's behavior state machine), context.ts (timer → Koa context)
-  time.ts      local-day keys
+  settings/    settings.ts (model, validation, stepping, timerConfigFrom)
+  stats/       stats.ts (stats derived from the earned ledger)
+  time.ts      local-day keys, addDays/isDayKey (calendar arithmetic, DST-safe)
 src/features/  framework-agnostic stores (getState/subscribe/actions) + React hooks/components
-  timer/ rewards/ shop/ koala/
+  timer/ rewards/ shop/ koala/ settings/ stats/ wakeLock/
 src/app/       App shell, screens, connect.ts (feature wiring), hash-based tabs
-src/ui/        design-system primitives (Button, SegmentedControl, ProgressRing, CoinPill, BottomNav, Card, glyphs)
+src/ui/        design-system primitives (Button, SegmentedControl, Stepper, Switch, ProgressRing, CoinPill, BottomNav, Card, glyphs)
 src/storage/   StorageAdapter + versioned save (koa:v1)
-src/config/    timerDefaults.ts, rewards.ts, catalog.ts, koalaBehavior.ts, koalaLines.ts
+src/config/    timerDefaults.ts, rewards.ts, catalog.ts, koalaBehavior.ts, koalaLines.ts, settings.ts (ranges, defaults, presets)
 src/styles/    tokens.css (design tokens), base.css
 ```
 
 - **Pure core, thin UI.** Business rules live in `src/core/` and take `now` as a parameter. Components present state and call store actions.
-- **Feature stores** are read with `useSyncExternalStore`. Features communicate through events; `src/app/connect.ts` wires the timer's `sessionCompleted` event to the wallet, and the timer, wallet grants and user input to Koa's brain. It runs once in `main.tsx`, before render.
+- **Feature stores** are read with `useSyncExternalStore`. Features communicate through events; `src/app/connect.ts` wires the timer's `sessionCompleted` event to the wallet, and the timer, wallet grants and user input to Koa's brain. It also pushes settings changes to the timer (`setConfig`) and refreshes wallet, wardrobe and settings on the `storage` event (other tabs). It runs once in `main.tsx`, before render.
 - **Persistence:**
-  - One LocalStorage key, `koa:v1` = `{ version, timer, wallet, wardrobe }`, read and written only through `src/storage/`. **Components never touch `localStorage`.**
-  - Each slice is validated on load (`restoreTimer`, `restoreWallet`, `restoreWardrobe`), so corrupt data resets only that slice. Unreadable or future-version saves go to `koa:backup`.
-  - There's a migration table for schema bumps. New slices (Phase 8 `settings`, `history`) go through `saveSlice`.
+  - One LocalStorage key, `koa:v1` = `{ version, timer, wallet, wardrobe, settings }`, read and written only through `src/storage/`. **Components never touch `localStorage`.**
+  - Each slice is validated on load (`restoreTimer`, `restoreWallet`, `restoreWardrobe`, and `restoreSettings` per field), so corrupt data resets only that slice or field. Unreadable or future-version saves go to `koa:backup`.
+  - There's a migration table for schema bumps. `settings` is an optional slice (older saves load the defaults), so it needed no version bump. Slices are written with `saveSlice`.
+  - **There is no `history` slice.** Stats are derived from the wallet's earned ledger (approved decision).
 - **Config, not constants:** timer defaults, reward values and the shop catalog live in `src/config/`.
 
 ## Timer (Phase 4)
@@ -74,21 +78,21 @@ src/styles/    tokens.css (design tokens), base.css
 - **Timestamp-based.**
   - A running session stores `endsAt`, and remaining time = `endsAt - now`, clamped. The 250ms tick only re-renders.
   - `reconcile` runs on launch, on every tick and on `visibilitychange`, `focus` and `pageshow`. A session that ended while the app was away completes as of `endsAt`, and only once.
-- **Cycle:** focus → short break ×3, then a long break after the 4th focus session. The next session never auto-starts.
+- **Cycle:** focus → short breaks, then a long break after every `longBreakEvery` focus sessions (setting, 2–8, default 4). The next session never auto-starts.
 - **Skip and reset:**
   - Skipped sessions never count. Skipping a started focus session asks for confirmation.
   - Reset keeps the cycle.
   - Mode chips are locked while a session is in progress.
 - **Event order:** the store emits events **before** saving the timer. A crash in between causes a repeat (ignored by the ledger), never a lost reward. Keep this order.
-- **Durations:** `applyConfig` only changes an idle session. Phase 8's custom durations must never alter a running or paused session.
+- **Durations come from Settings.** `timerStore` is created from the saved settings (the settings store loads first), and `setConfig` applies later changes. `applyConfig`/`fitIdleSession` only refit a waiting session; **a running or paused session never changes length**. Lowering the interval to or below the focus sessions already done turns a waiting focus session or short break into the earned long break (no cycle bonus is paid for that).
 
 ## Coins, wallet and shop (Phases 5–6)
 
 - **Wallet** = `ledger` (EARNED, append-only) + `spending` (SPENT). `totalEarned`, `totalSpent` and `balance` (≥ 0) are **always derived** from the entries; saved totals are ignored on load. **Spending must never modify or erase earned ledger entries.**
 - **Rewards** (`src/config/rewards.ts`):
   - 1 coin per focus minute
-  - +30 cycle bonus (the 4th focus session)
-  - +50 daily goal (default 100 focus minutes per local day)
+  - Cycle bonus when a focus session completes the cycle: `round(30 × cycle focus minutes / 100)`, capped at 30 (exactly 30 for 4 × 25 min). The timer tracks `cycleFocusMs`; saves without it count 25 min per completed session.
+  - +50 daily goal (default 100 focus minutes per local day; the goal is a setting, read at payout time). Changing the goal never pays by itself.
 
   Ledger keys `focus:<sessionId>`, `cycle:<sessionId>` and `goal:<YYYY-MM-DD>` are each paid **at most once**. Breaks and skipped sessions pay nothing.
 - **Cross-tab safety:** `award()` and `purchase()` apply to the latest *saved* wallet.
@@ -97,6 +101,14 @@ src/styles/    tokens.css (design tokens), base.css
   - Buying is two-step (price → "Buy for N?") and equips the item automatically.
   - The catalog has 9 items (`src/config/catalog.ts`).
 - **Wardrobe:** one item per slot (`head`, `face`, `neck`, `ear`, `body`), and only owned items can be equipped. On load, unknown, unowned and wrong-slot items are dropped.
+
+## Phase 8 so far (Steps 1–8, approved)
+
+Full details: `docs/phase-8/settings-plan.md` ("Decisions" and "Implementation details").
+- **Settings** (`src/core/settings/`, `src/config/settings.ts`, store in `src/features/settings/`): focus 1–120, short break 1–30, long break 1–60 min, long break after 2–8 sessions, daily goal 25–480 min in 25-minute steps (480 is also valid), flags `notifications`, `keepScreenOn`, `sounds` (off by default). Invalid values are never saved; typed input is rounded, clamped and snapped on blur. Changes apply from the next session.
+- **Settings screen** (`SettingsScreen.tsx`): a Timer card (steppers, focus presets 15/25/45/50), a Daily goal card, and a "While you focus" card with the Keep screen on `<Switch>`. Step 9 adds notifications to that card.
+- **Stats** (`src/core/stats/stats.ts`, `StatsScreen.tsx`): computed from `focus:` and `goal:` ledger entries. A session counts on the `day` saved in its entry. The streak counts consecutive local days with a completed focus session; the current streak continues from yesterday until today ends, and future-dated entries never extend it. Legacy focus entries without `minutes` are estimated from coins for Stats only (documented limitation). The screen shows a today ring against the goal, streaks, all-time totals, a 7-day CSS bar chart with screen-reader text, and a Koa empty state.
+- **Keep screen on** (`src/features/wakeLock/`): held only while the setting is on, the page is visible and a focus session is running before its `endsAt`. The browser API is injected (`WakeLockEnv`) and mocked in tests. It's released on pause, completion, skip, reset, setting off and hidden page, and reacquired when the page is visible again. Failures never touch the timer; unsupported browsers get a disabled switch with an explanation.
 
 ## The mascot (non-negotiable)
 
@@ -138,8 +150,10 @@ src/styles/    tokens.css (design tokens), base.css
 
 ## Next steps
 
-- **Phase 8:**
-  - Stats from a session history.
-  - Settings (`docs/phase-8/settings-plan.md`): custom focus, short break and long break durations (R1), adjustable daily goal (R2), notifications, wake lock, sounds, data export and reset.
+- **Phase 8, remaining steps** (see the plan's "Browser limitations" and "Decisions"):
+  - **Step 9, Notifications:** session-complete notifications, off by default; ask for permission only when the toggle is turned on. Explain when unsupported or denied (iPhone: installed Home Screen app on iOS 16.4+ only, and nothing arrives while the page is suspended).
+  - **Step 10, Sounds:** one soft session-complete chime generated with Web Audio. No audio files, no dependency, off by default.
+  - **Step 11, Export and reset:** JSON export of the save. Reset progress keeps Settings; it resets coins, purchases, outfit, stats (the ledger), timer and cycle, writes a backup first and needs explicit confirmation.
+  - **Step 12, Documentation and final checks** for Phase 8.
 - **Phase 9:** PWA and offline support. Keep the reference sheet out of the shipped bundle (it's currently in `public/`).
 - **Phase 10:** a committed Playwright suite plus polish.

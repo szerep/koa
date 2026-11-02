@@ -4,7 +4,7 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
 
 ## Status
 
-**Phases 1–7 are complete and approved (2026-11-02). Next: Phase 8.**
+**Phases 1–7 are complete and approved (2026-11-02). Phase 8 is in progress: Steps 1–8 of 12 approved (2026-11-03). Next: Step 9 (notifications).**
 
 | Phase | Status | Goal | Key deliverables | Done when |
 |---|---|---|---|---|
@@ -15,7 +15,7 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
 | **5. Coins and rewards** | ✅ Approved | Studying pays | Idempotent wallet ledger, cycle and daily-goal bonuses, coin fly-up animation | No double payouts (tested) |
 | **6. Shop and customization** | ✅ Approved | Spend coins on Koa | Catalog, shop UI, buy, equip and unequip, wallet with separate earned and spent, wardrobe persistence, accessory-layer integration. **Accessory artwork not produced yet** (`docs/phase-6/accessory-assets.md`). | Purchases, ownership and outfit persist (tested); items appear on Koa once their art exists |
 | **7. Personality and interactions** | ✅ Approved | Koa feels alive | Koala state machine, ambient actions, tap and multi-tap reactions, speech bubbles, nap on inactivity, show-off on equip. Needs Tier 2 poses from the art pipeline; until they exist it works within the idle frames. | Never interrupts focus; no repeated actions; respects reduced motion |
-| **8. Statistics and settings** | Planned | Progress you can see | Totals, streak, daily goal, weekly chart. Settings (`docs/phase-8/settings-plan.md`): **custom focus, short break and long break durations (R1)**, **adjustable daily goal (R2)**, notifications, wake lock, sounds, data reset and export. Evening theme (stretch goal). | Stats derived from history (tested); custom durations validated, persisted, never altering a running session (tested) |
+| **8. Statistics and settings** | In progress (Steps 1–8 of 12 approved) | Progress you can see | Totals, streak, daily goal, weekly chart. Settings (`docs/phase-8/settings-plan.md`): **custom focus, short break and long break durations (R1)**, **adjustable daily goal (R2)**, notifications, wake lock, sounds, data reset and export. Evening theme (stretch goal). | Stats derived from history (tested); custom durations validated, persisted, never altering a running session (tested) |
 | **9. PWA and mobile optimization** | Planned | Installable and offline | `vite-plugin-pwa`, manifest, Apple touch icons and splash screens, offline caching of art and fonts, standalone polish, performance budget (keep the design sheet out of the shipped bundle) | Installs on iPhone; works offline; Lighthouse PWA checks pass |
 | **10. Testing and polish** | Planned | Ship quality | Committed Playwright suite, accessibility pass, motion tuning, copy pass, bug bash | Release candidate |
 
@@ -67,3 +67,19 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
     - The Home hop on rewards and the Shop hop on equip are replaced by the brain's celebrate and show-off reactions.
   - **Tests:** 145 unit tests (37 new for the brain, context mapping, store and `canAffordAnything`).
 - **2026-11-02:** Phase 7 approved. Decisions confirmed as implemented: 2-minute minimum between unprompted lines; a paused focus session counts as idle; nap "z" letters stay plain text; equip thank-you lines never imply that missing accessory artwork is visible. **Next: Phase 8.**
+- **2026-11-02:** Phase 8 plan approved, to be implemented in 12 reviewed steps (`docs/phase-8/settings-plan.md`). Decisions:
+  - The cycle bonus scales with the cycle's focus minutes: `round(30 × minutes / 100)`, capped at 30.
+  - Lowering the goal pays only when the next focus session completes.
+  - The long break interval is 2–8 sessions, default 4.
+  - A streak counts consecutive days with a completed focus session.
+  - Sounds: one Web Audio chime, off by default.
+  - Reset keeps Settings and writes a backup first.
+  - Stats come from the existing ledger: no `history` slice and no migration. Import is out of scope.
+- **2026-11-03:** Phase 8 Steps 1–8 approved (`docs/phase-8/settings-plan.md`, "Implementation details"):
+  - Settings model, store and screen: custom durations, long break interval (2–8), daily goal (25–480 min), saved in an optional `settings` slice (no version bump).
+  - The timer follows Settings for new and waiting sessions only; running and paused sessions keep their length.
+  - Daily goal read at payout time; cycle bonus scaled by the cycle's focus minutes (`cycleFocusMs`).
+  - Stats derived from the ledger: a session counts on its entry's saved `day`, the current streak continues from yesterday until today ends, future-dated entries don't extend it, legacy entries without minutes are estimated from coins for Stats only (accepted limitation).
+  - Stats screen: today ring, streaks, all-time totals, 7-day CSS bar chart with screen-reader text, Koa empty state.
+  - Keep screen on: Screen Wake Lock held only during a running focus session with the page visible; disabled with an explanation where unsupported.
+  - Remaining: Step 9 notifications, Step 10 sounds, Step 11 export and reset, Step 12 docs and final checks.

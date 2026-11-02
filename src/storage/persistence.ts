@@ -14,6 +14,8 @@ export interface PersistedState {
   timer?: unknown
   wallet?: unknown
   wardrobe?: unknown
+  /** Phase 8. Optional: older saves without it load the default settings (no migration). */
+  settings?: unknown
 }
 
 type Migration = (data: Record<string, unknown>) => Record<string, unknown>
