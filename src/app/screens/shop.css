@@ -1,0 +1,266 @@
+.shop {
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+/* Preview: Koa and what Koa is wearing. */
+.shop__preview {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-4) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.shop__koala {
+  display: grid;
+  place-items: center;
+  padding-top: var(--space-3);
+}
+
+.shop__outfit {
+  display: grid;
+  gap: var(--space-2);
+  align-content: center;
+}
+
+.shop__title {
+  font-size: var(--text-display);
+}
+
+.shop__hint,
+.shop__art-note {
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  text-wrap: pretty;
+}
+
+.shop__art-note {
+  font-size: var(--text-caption);
+}
+
+.shop__wearing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+}
+
+.wearing-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 var(--space-3) 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--euca-100);
+  color: var(--euca-800);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.wearing-chip:hover {
+  background: var(--euca-200);
+}
+
+.wearing-chip__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--cream-300);
+}
+
+/* Category tabs scroll sideways on narrow phones instead of squeezing. */
+.shop__tabs {
+  justify-self: center;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.shop__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.shop__tabs .segmented__option {
+  flex: none;
+}
+
+/* Narrow phones: tighter tabs so all five categories fit without scrolling. */
+@media (max-width: 420px) {
+  .shop__tabs .segmented__option {
+    padding: 0 10px;
+    font-size: 0.8125rem;
+  }
+}
+
+.shop__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+}
+
+.item-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--space-2);
+  height: 100%;
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+
+.item-card.is-equipped {
+  box-shadow:
+    0 0 0 2px var(--euca-300),
+    var(--shadow-2);
+}
+
+.item-card__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  border-radius: 20px;
+  background: var(--surface-sunken);
+}
+
+.item-card__swatch {
+  width: 36%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow:
+    var(--shadow-inset-round),
+    var(--shadow-1);
+}
+
+.item-card__art-status {
+  position: absolute;
+  bottom: 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.item-card__owned {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--euca-800);
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.item-card__name {
+  font-size: 1.0625rem;
+  line-height: 1.2;
+  padding-inline: var(--space-1);
+}
+
+.item-card__desc {
+  padding-inline: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+}
+
+.item-card__action {
+  width: 100%;
+  min-height: 44px;
+  margin-top: var(--space-1);
+  font-size: 1rem;
+}
+
+.item-card__action.btn--primary {
+  --btn-base: 3px;
+}
+
+.item-card__action--confirm {
+  background: var(--honey-300);
+  color: var(--bark-900);
+  box-shadow:
+    0 var(--btn-base) 0 var(--honey-700),
+    var(--shadow-1);
+}
+
+.item-card__action--confirm:hover {
+  background: var(--honey-300);
+}
+
+.item-card__locked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-top: var(--space-1);
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+}
+
+.item-card__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.item-card__need {
+  font-size: var(--text-caption);
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.shop__toast-area {
+  position: fixed;
+  z-index: 15;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + var(--nav-height) + 28px);
+  transform: translateX(-50%);
+  width: min(calc(100% - 2 * var(--gutter)), 420px);
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.shop__toast {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--bark-900);
+  color: var(--cream-50);
+  font-size: var(--text-label);
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--shadow-3);
+}
+
+@media (min-width: 600px) {
+  .shop__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .shop__toast-area {
+    bottom: calc(var(--safe-bottom) + 32px);
+  }
+}

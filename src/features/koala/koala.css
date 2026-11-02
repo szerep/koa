@@ -1,0 +1,72 @@
+.koala {
+  position: relative;
+  width: var(--figure-w);
+  aspect-ratio: var(--figure-aspect);
+}
+
+.koala__figure {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-origin: 50% 100%;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.koala__figure--button {
+  cursor: pointer;
+  border-radius: 40% 40% 30% 30%;
+}
+
+.koala__figure--button:focus-visible {
+  outline-offset: 6px;
+  border-radius: 40% 40% 30% 30%;
+}
+
+.koala__breath {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+}
+
+.koala__breath.is-breathing {
+  animation: koala-breathe 4.2s var(--ease-in-out) infinite;
+}
+
+.koala__img {
+  position: absolute;
+  width: var(--img-w);
+  max-width: none;
+  height: auto;
+  left: var(--img-left);
+  top: var(--img-top);
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.koala__img--blink {
+  transition: none;
+}
+
+/* Soft contact shadow, drawn by the app so it matches every room. */
+.koala__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 78%;
+  height: 9%;
+  transform: translate(-50%, 45%);
+  border-radius: 50%;
+  background: var(--contact-shadow);
+  pointer-events: none;
+}
+
+@keyframes koala-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.006, 1.016);
+  }
+}

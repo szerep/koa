@@ -1,0 +1,117 @@
+/* Buttons feel physical: the primary pill sits on a darker "base" and presses into it. */
+.btn {
+  --btn-base: 4px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.btn--md {
+  min-height: 48px;
+  padding: 0 var(--space-5);
+  font-size: 1.0625rem;
+}
+
+.btn--lg {
+  min-height: 60px;
+  min-width: 168px;
+  padding: 0 var(--space-6);
+  font-size: 1.25rem;
+}
+
+.btn__icon {
+  display: inline-flex;
+}
+
+.btn__icon svg {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.btn--primary {
+  background: var(--euca-500);
+  color: var(--accent-ink);
+  box-shadow:
+    0 var(--btn-base) 0 var(--euca-700),
+    var(--shadow-accent);
+  transform: translateY(calc(var(--btn-base) * -1));
+}
+
+.btn--primary:hover {
+  background: var(--euca-400);
+}
+
+.btn--primary:active {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 var(--euca-700),
+    var(--shadow-accent-pressed);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  color: var(--text-heading);
+  box-shadow: var(--shadow-1);
+}
+
+.btn--secondary:active {
+  transform: translateY(1px);
+}
+
+.btn--ghost {
+  color: var(--text-heading);
+}
+
+.btn--ghost:hover {
+  background: var(--cream-200);
+}
+
+.btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Round icon button: quiet secondary actions. */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--bark-600);
+  box-shadow: var(--shadow-1);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.icon-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.icon-btn:hover {
+  color: var(--text-heading);
+}
+
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.icon-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+  box-shadow: none;
+}

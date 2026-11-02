@@ -1,0 +1,83 @@
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100dvh;
+  padding:
+    calc(var(--safe-top) + var(--space-3))
+    calc(var(--safe-right) + var(--gutter))
+    calc(var(--safe-bottom) + var(--nav-height) + var(--space-6))
+    calc(var(--safe-left) + var(--gutter));
+}
+
+.app__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  min-height: 48px;
+}
+
+.app__main {
+  display: grid;
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+
+.app__screen {
+  display: grid;
+  align-content: center;
+  padding-block: var(--space-3);
+}
+
+.wordmark {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
+  padding-right: 12px;
+}
+
+.wordmark__leaf {
+  position: absolute;
+  top: -5px;
+  right: 0;
+  color: var(--euca-500);
+  transform: rotate(8deg);
+}
+
+@media (min-width: 960px) {
+  .app {
+    padding:
+      calc(var(--safe-top) + var(--space-5))
+      calc(var(--safe-right) + var(--gutter))
+      calc(var(--safe-bottom) + var(--space-5))
+      calc(var(--safe-left) + 136px);
+  }
+}
+
+/*
+ * Focus mode: while a focus session runs, the chrome steps back so Koa and the timer
+ * hold attention. Hovering or keyboard focus brings it back.
+ */
+.app .app__bar .coin-pill,
+.app .nav {
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.app[data-focus-running] .app__bar .coin-pill,
+.app[data-focus-running] .nav {
+  opacity: 0.4;
+}
+
+.app[data-focus-running] .nav:hover,
+.app[data-focus-running] .nav:focus-within,
+.app[data-focus-running] .app__bar .coin-pill:hover {
+  opacity: 1;
+}

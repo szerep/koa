@@ -1,0 +1,45 @@
+.reward-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.reward-layer__coin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: -11px 0 0 -11px; /* center the 22px coin on its point */
+  filter: drop-shadow(var(--shadow-small));
+}
+
+.reward-layer__labels {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  transform: translate(-50%, -100%);
+}
+
+.reward-layer__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--space-3) 6px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: var(--bark-700);
+  white-space: nowrap;
+}
+
+.reward-layer__label.is-bonus {
+  padding-left: var(--space-3);
+  background: var(--honey-100);
+  color: var(--bark-700);
+  font-size: 1rem;
+}

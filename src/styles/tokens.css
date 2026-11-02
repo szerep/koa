@@ -1,0 +1,121 @@
+/*
+ * Koa design tokens: the single source for color, type, shape, space and motion.
+ * Components use these variables only; never hard-code new colors in components.
+ * Palette anchors are sampled from the original reference sheet's swatches
+ * (fur #ADA6A5, inner ear #E5BCB3, hoodie #96A07E, cream #F1E1CF, brown #936F57).
+ */
+:root {
+  /* Cream: the canvas */
+  --cream-50: #fffaf3;
+  --cream-100: #f9eee1;
+  --cream-200: #f1e1cf;
+  --cream-300: #e6d2bc;
+
+  /* Eucalyptus: primary (500 = Koa's hoodie) */
+  --euca-100: #eef0e4;
+  --euca-200: #dce0cb;
+  --euca-300: #c2c9a9;
+  --euca-400: #a0aa88;
+  --euca-500: #96a07e;
+  --euca-600: #7d8865;
+  --euca-700: #5f6a4b;
+  --euca-800: #4e5839;
+  --euca-900: #2f3524;
+
+  /* Koala grey: neutral */
+  --fur-200: #e2dedd;
+  --fur-400: #ada6a5;
+  --fur-600: #7e7776;
+
+  /* Blush: affection */
+  --blush-200: #f5dad3;
+  --blush-400: #e5bcb3;
+  --blush-600: #b97a70;
+
+  /* Bark: ink */
+  --bark-300: #c4a48c;
+  --bark-500: #936f57;
+  --bark-600: #6e5646;
+  --bark-700: #5c4334;
+  --bark-900: #3a2b22;
+
+  /* Honey: rewards */
+  --honey-100: #fbefd6;
+  --honey-300: #f4d28c;
+  --honey-500: #e3a948;
+  --honey-700: #a8711e;
+
+  --danger: #c46a5e;
+
+  /* Semantic roles */
+  --bg: var(--cream-100);
+  --surface: var(--cream-50);
+  --surface-sunken: var(--cream-200);
+  --text: var(--bark-900);
+  --text-heading: var(--bark-700);
+  --text-muted: var(--bark-600); /* 5.9:1 on --bg */
+  --accent: var(--euca-500);
+  --accent-ink: var(--euca-900); /* text on --accent, 4.9:1+ */
+  --accent-strong: var(--euca-700);
+  --focus-ring: var(--euca-700);
+
+  /* Type */
+  --font-display: 'Fredoka Variable', 'Fredoka', ui-rounded, system-ui, sans-serif;
+  --font-ui: 'Nunito Sans Variable', 'Nunito Sans', system-ui, sans-serif;
+
+  --text-timer: 4.5rem; /* 72px */
+  --text-display: 2rem;
+  --text-title: 1.375rem;
+  --text-body: 1rem;
+  --text-label: 0.875rem;
+  --text-caption: 0.75rem;
+
+  /* Shape */
+  --radius-chip: 12px;
+  --radius-button: 20px;
+  --radius-card: 28px;
+  --radius-full: 999px;
+
+  /* Space (4-pt) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --gutter: 20px;
+
+  /* Warm shadows: elevation adds blur, not darkness */
+  --shadow-1: 0 1px 2px rgb(92 67 52 / 0.06), 0 2px 6px -2px rgb(92 67 52 / 0.1);
+  --shadow-2: 0 2px 4px rgb(92 67 52 / 0.06), 0 10px 24px -8px rgb(92 67 52 / 0.18);
+  --shadow-3: 0 4px 8px rgb(92 67 52 / 0.06), 0 18px 40px -12px rgb(92 67 52 / 0.24);
+  --shadow-accent: 0 10px 18px -6px rgb(79 90 57 / 0.45);
+  --shadow-accent-pressed: 0 3px 8px -4px rgb(79 90 57 / 0.4);
+  --shadow-small: 0 1px 1.5px rgb(92 67 52 / 0.25);
+  --shadow-inset-round: inset 0 -6px 12px rgb(58 43 34 / 0.12);
+  --contact-shadow: radial-gradient(closest-side, rgb(92 67 52 / 0.24), rgb(92 67 52 / 0.1) 60%, transparent);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 180ms;
+  --dur-base: 260ms;
+  --dur-slow: 400ms;
+
+  /* Safe areas */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Layout */
+  --nav-height: 68px;
+  --content-max: 960px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --gutter: 32px;
+  }
+}

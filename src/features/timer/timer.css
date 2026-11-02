@@ -1,0 +1,60 @@
+.timer-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(3.5rem, 8dvh, var(--text-timer));
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.cycle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.cycle__leaves {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.cycle__leaf {
+  color: var(--cream-300);
+  --glyph-vein: transparent;
+}
+
+.cycle__leaf.is-done {
+  color: var(--euca-500);
+  --glyph-vein: var(--cream-50);
+}
+
+.timer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding-top: var(--space-1); /* room for the primary button's raised base */
+}
+.skip-confirm {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  max-width: 30ch;
+  text-align: center;
+}
+
+.skip-confirm__text {
+  color: var(--text);
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.skip-confirm__actions {
+  display: flex;
+  gap: var(--space-2);
+}

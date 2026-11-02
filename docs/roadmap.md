@@ -1,0 +1,57 @@
+# Koa — Implementation Roadmap
+
+Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Playwright check at 390×844 and on desktop, a short demo or summary, and **your approval** before the next phase starts.
+
+## Status
+
+**Phases 1–6 are complete and approved (2026-11-02). Phase 7 is next and has not started.**
+
+| Phase | Status | Goal | Key deliverables | Done when |
+|---|---|---|---|---|
+| **1. Analysis and product design** | ✅ Approved | Shared vision | `CLAUDE.md`, design brief, character bible, architecture, this roadmap | Approved |
+| **2. Character artwork and assets** | ✅ Approved (closed at Gate 0 by decision) | One locked, unmistakable Koa. Consistency over quantity. | Gate 0 Koa Master (v02, provisional) + idle blink frame; normalization and export scripts. Gates 1–3 (expressions, poses, accessories) deferred to a later art pass. | Master approved; blink aligns pixel-perfectly |
+| **3. Design system and home screen** | ✅ Approved | It looks like Koa | Tokens, fonts, UI primitives, app shell with 4 tabs and safe areas, home composition with the real koala (breathing and blink) | Matches the brief on iPhone, iPad and desktop |
+| **4. Pomodoro timer** | ✅ Approved | An accurate, lovely timer | `core/timer` engine plus tests; start, pause, resume, reset, skip; cycle and long break; persistence and background reconciliation. *Custom durations and notifications moved to Phase 8.* | Tests pass; survives reload and backgrounding |
+| **5. Coins and rewards** | ✅ Approved | Studying pays | Idempotent wallet ledger, cycle and daily-goal bonuses, coin fly-up animation | No double payouts (tested) |
+| **6. Shop and customization** | ✅ Approved | Spend coins on Koa | Catalog, shop UI, buy, equip and unequip, wallet with separate earned and spent, wardrobe persistence, accessory-layer integration. **Accessory artwork not produced yet** (`docs/phase-6/accessory-assets.md`). | Purchases, ownership and outfit persist (tested); items appear on Koa once their art exists |
+| **7. Personality and interactions** | ⏭️ **Next, not started** | Koa feels alive | Koala state machine, ambient actions, tap and multi-tap reactions, speech bubbles, nap on inactivity, show-off on equip. Needs Tier 2 poses from the art pipeline; until they exist it works within the idle frames. | Never interrupts focus; no repeated actions; respects reduced motion |
+| **8. Statistics and settings** | Planned | Progress you can see | Totals, streak, daily goal, weekly chart. Settings (`docs/phase-8/settings-plan.md`): **custom focus, short break and long break durations (R1)**, **adjustable daily goal (R2)**, notifications, wake lock, sounds, data reset and export. Evening theme (stretch goal). | Stats derived from history (tested); custom durations validated, persisted, never altering a running session (tested) |
+| **9. PWA and mobile optimization** | Planned | Installable and offline | `vite-plugin-pwa`, manifest, Apple touch icons and splash screens, offline caching of art and fonts, standalone polish, performance budget (keep the design sheet out of the shipped bundle) | Installs on iPhone; works offline; Lighthouse PWA checks pass |
+| **10. Testing and polish** | Planned | Ship quality | Committed Playwright suite, accessibility pass, motion tuning, copy pass, bug bash | Release candidate |
+
+## Decisions log
+
+- **2026-11-02:** Phase 1 approved.
+  - Sheet renamed to `koala-design-sheet.png`.
+  - Crown tuft always present; pink-cream inner ears; cropped hoodie; Study pose without glasses.
+  - Clothing uses hoodie recolors (option A).
+  - Fonts: Fredoka + Nunito Sans. Animation library: Motion.
+  - Image tool: ChatGPT ImageGen.
+- **2026-11-02:** Gate 0 closed. **v02 approved as the provisional Koa Master** (known proportion deviations accepted; see `docs/phase-2/gate-0-koa-master.md` §7). Idle blink frame produced and exported. **Phase 2 stopped at Gate 0 by decision.** Gates 1–3 (expressions, poses, accessories) are deferred to a later art pass. Priority now: a working app.
+- **2026-11-02:** Phase 3 implemented (design system, app shell, home screen). Tooling: TypeScript 6 installed under the `typescript` alias so typescript-eslint works; `tsc` remains TypeScript 7.
+- **2026-11-02:** Phase 3 approved. Phase 4 implemented:
+  - Pure engine in `src/core/timer/`, versioned storage in `src/storage/`, store and hook in `src/features/timer/`.
+  - 59 unit tests (`pnpm test`, Vitest) plus a Playwright fake-clock run through a full cycle, refresh and a 2-hour suspension.
+  - Decisions:
+    - A finished session moves to the next one *without auto-starting*.
+    - Skipped sessions never count, and skipping a focus session goes to a short break.
+    - Mode chips are locked while a session is in progress.
+    - Skipping a started focus session asks for confirmation.
+  - System notifications and wake lock are deferred to Phase 8 settings, so the permission prompt sits behind an explicit toggle.
+- **2026-11-02:** Phase 4 approved. Custom timer durations recorded for Phase 8 (`docs/phase-8/settings-plan.md`, R1).
+- **2026-11-02:** Phase 5 implemented:
+  - Pure, idempotent wallet in `src/core/rewards/wallet.ts`; values in `src/config/rewards.ts`; store, overlay and wiring in `src/features/rewards/` and `src/app/connect.ts`.
+  - Rewards:
+    - 1 coin per focus minute
+    - +30 cycle bonus
+    - +50 daily goal; **the goal defaults to 100 focus minutes per local day**, adjustable in Phase 8
+  - Ledger keys `focus:<sessionId>`, `cycle:<sessionId>` and `goal:<day>`, each paid at most once, including across tabs, relaunches and a crash between saves.
+- **2026-11-02:** Phase 5 approved. Phase 6 implemented:
+  - **Wallet:** split into an append-only earned `ledger` and a separate `spending` record (`item:<id>`). Earned, spent and balance are always derived from these entries; saved totals are ignored.
+  - **Shop rules:** pure functions in `src/core/shop/shop.ts`; catalog of 9 items in `src/config/catalog.ts`.
+  - **Wardrobe:** a separate saved slice, one item per slot. On load it only keeps items that exist, are owned and sit in their own slot.
+  - **Buying:** a two-step confirm, then the item is equipped automatically.
+  - **Accessory art:** the integration (`accessoryArt` in the manifest, plus layered rendering in `<Koala>`) is ready, but **no art exists yet**. Required files are listed in `docs/phase-6/accessory-assets.md`.
+  - **Hoodie recolors:** deferred. Producing them by recoloring the Master's hoodie in code needs explicit approval (character bible §5).
+  - **Tests:** 108 unit tests.
+- **2026-11-02:** Phase 6 approved. Documentation updated and the project prepared for GitHub. **Next: Phase 7.**

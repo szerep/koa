@@ -1,0 +1,44 @@
+.ring {
+  position: relative;
+  aspect-ratio: 1;
+}
+
+.ring__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Lamplight inside the halo: the koala's little pool of warm light. */
+.ring__glow {
+  fill: var(--cream-50);
+  opacity: 0.55;
+}
+
+.ring__track {
+  fill: none;
+  stroke: var(--cream-50);
+}
+
+.ring__fill {
+  fill: none;
+  stroke: var(--euca-500);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 600ms linear;
+}
+
+.ring__cap {
+  fill: var(--surface);
+  filter: drop-shadow(var(--shadow-small));
+}
+
+.ring__leaf {
+  fill: var(--euca-600);
+}
+
+.ring__content {
+  position: absolute;
+  inset: 0;
+}
