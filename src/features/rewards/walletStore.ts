@@ -21,6 +21,7 @@ export type WalletStore = ReturnType<typeof createWalletStore>
 const sameTotals = (a: Wallet, b: Wallet) =>
   a.totalEarned === b.totalEarned &&
   a.totalSpent === b.totalSpent &&
+  Object.keys(a.ledger).length === Object.keys(b.ledger).length &&
   Object.keys(a.spending).length === Object.keys(b.spending).length
 
 export function createWalletStore({ rules, dailyGoalMinutes, storage, now = Date.now }: WalletStoreOptions) {

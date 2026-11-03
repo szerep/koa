@@ -101,6 +101,17 @@ export function createTimerStore({ config: initialConfig, storage, now = Date.no
     getConfig: () => config,
 
     /**
+     * Re-read the saved timer after Reset progress (here or in another tab). The old session is
+     * dropped without events, so it can never complete, pay or announce itself afterwards.
+     */
+    reload() {
+      const next = restoreTimer(loadState(storage).timer, config)
+      const changed = JSON.stringify(next) !== JSON.stringify(state)
+      state = next
+      if (changed) listeners.forEach((l) => l())
+    },
+
+    /**
      * New settings (durations, long break interval). A session that hasn't started updates
      * right away; a running or paused session keeps its length and remaining time.
      */

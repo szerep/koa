@@ -4,7 +4,7 @@ Koa is a cozy Pomodoro timer with a koala companion. Focus sessions earn **Coins
 
 It's built as a web app for **iPhone first** (it also works on iPad and desktop browsers). Installable PWA support and offline use are planned.
 
-> **Status:** early development. Phases 1–7 of 10 are complete, and Phase 8 (statistics and settings) is in progress. See [`docs/roadmap.md`](docs/roadmap.md).
+> **Status:** early development. Phases 1–8 of 10 are complete (Phase 8: statistics and settings). Next up is Phase 9, PWA and offline support. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Features
 
@@ -47,6 +47,12 @@ It's built as a web app for **iPhone first** (it also works on iPad and desktop 
 - Focus (1–120 min, with 15 · 25 · 45 · 50 presets), short break (1–30 min), long break (1–60 min) and long break interval (2–8 sessions). Changes apply from the next session; a running or paused session keeps its length
 - Daily goal from 25 to 480 minutes
 - **Keep screen on** during focus sessions, using the Screen Wake Lock API. It's held only while a focus session is running and the app is visible, and released on pause, at the end of the session and during breaks. It needs a supporting browser: Safari 16.4 or later on iPhone and iPad (in an installed Home Screen app only from iOS 18.4), and current Chrome and Edge. Elsewhere the switch is disabled with an explanation, and low power modes can refuse the request
+- **Session notifications** (off by default) when a session ends while Koa is in the background. Your browser asks for permission only when you turn the switch on, and nothing is shown while you're looking at Koa. A completion noticed more than 5 minutes late (the app was closed or suspended) isn't announced. If notifications are unsupported, blocked or the prompt was dismissed, the row says why
+- **Sounds** (off by default): one soft two-note chime when a session ends, synthesized with the Web Audio API (no audio files). Turning it on plays it once as a preview. Browsers only allow audio after a tap, so after a reload the chime is ready once you tap anywhere in Koa; until then completions are silent. Stale completions (more than 5 minutes late) don't chime
+
+**Your data**
+- **Export:** downloads everything Koa keeps as a JSON file (`koa-data-YYYY-MM-DD.json`): a small versioned envelope (`format: "koa-export"`, `exportVersion: 1`) around the exact `koa:v1` save, including the full reward history, purchases, outfit, timer and settings. There's no import
+- **Reset progress:** a two-step confirmation that lists your own numbers. It deletes coins, purchases, the outfit, stats and streaks, the timer and cycle progress (a session in progress stops without paying). **Settings and the browser's notification permission are kept.** A backup of your data is written to this browser first (`koa:backup:reset`), and if that fails nothing is deleted. Other open tabs drop their session too
 
 Everything is saved locally in the browser (LocalStorage). Damaged save data is validated and safely reset.
 
@@ -55,7 +61,9 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 - **Accessory artwork is not implemented yet.** You can buy and wear items, and your outfit is saved, but Koa can't show accessories until their artwork is made. Shop cards show a color swatch and "Artwork coming soon" instead. Nothing is drawn as a stand-in. The required files are listed in [`docs/phase-6/accessory-assets.md`](docs/phase-6/accessory-assets.md).
 - Koa currently has a single pose (sitting idle, plus a blink frame). Personality is expressed through gentle movement of that pose and its blink frame; study, rest, celebrate and other poses come with a later art pass.
 - The current Koa artwork is a **provisional** master with known proportion deviations from the design sheet.
-- Session-complete notifications, sounds, data export and reset progress are planned for the rest of Phase 8. The Settings screen doesn't offer them yet.
+- **Notifications on iPhone and iPad** work only in the installed Home Screen app (iOS 16.4 or later; installing properly comes with Phase 9), and even there nothing arrives while the phone is locked or Koa is in the background, because Koa has no push server. Desktop background tabs can delay a notification or chime by up to about a minute. Android Chrome only shows page notifications through a service worker, so they fail there until Phase 9.
+- **Sounds** need a tap after each reload and don't play while the page is suspended. The iPhone silent switch may mute them.
+- **Export** uses a regular download. Installed Home Screen apps on iOS may not handle it (Phase 9 can add the share sheet), and a download the browser blocks silently can't be detected. The reset backup lives in the same browser storage, so clearing site data removes it too; export first if you want your own copy.
 - There's no offline support or PWA install yet (Phase 9).
 - Data lives only in this browser. There are no accounts or sync.
 
@@ -70,7 +78,7 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 | 5 | Coins and rewards | ✅ |
 | 6 | Shop and customization | ✅ |
 | 7 | Koa's personality and interactions | ✅ |
-| 8 | Statistics and settings (custom durations, daily goal, stats, keep screen on; notifications, sounds, export and reset still to come) | In progress |
+| 8 | Statistics and settings (custom durations, daily goal, stats and streaks, keep screen on, notifications, sounds, export and reset) | ✅ |
 | 9 | PWA, offline support, mobile optimization | Planned |
 | 10 | Testing and polish | Planned |
 
@@ -107,12 +115,13 @@ pnpm dev          # start the dev server (http://localhost:5173)
 
 ```
 src/
-  core/        Pure TypeScript business logic (timer engine, wallet and rewards, shop rules, settings, stats), unit tested
-  features/    Feature stores and components: timer, rewards, shop, koala (character manifest), settings, stats, wake lock
+  core/        Pure TypeScript business logic (timer engine, wallet and rewards, shop rules, settings, stats, export and reset), unit tested
+  features/    Feature stores and components: timer, rewards, shop, koala (character manifest), settings, stats, wake lock,
+               notifications, sounds, data (export and reset)
   app/         App shell, screens, feature wiring, tab navigation
   ui/          Design-system primitives (buttons, stepper, switch, progress ring, coin pill, navigation)
   storage/     Storage adapter and versioned save format (LocalStorage key "koa:v1")
-  config/      Timer defaults, reward values, shop catalog, settings ranges
+  config/      Timer defaults, reward values, shop catalog, settings ranges, notification copy, chime
   styles/      Design tokens and base styles
 public/characters/   Exported Koa frames (WebP) and the reference design sheet
 art/                 Character art sources: approved Master, candidates, reference crops

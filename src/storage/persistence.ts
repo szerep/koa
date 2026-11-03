@@ -7,6 +7,8 @@ import type { StorageAdapter } from './adapter'
  */
 export const STORAGE_KEY = 'koa:v1'
 export const BACKUP_KEY = 'koa:backup'
+/** Written by Reset progress (Phase 8) before anything is deleted: the export of the save, latest reset only. */
+export const RESET_BACKUP_KEY = 'koa:backup:reset'
 export const SCHEMA_VERSION = 1
 
 export interface PersistedState {

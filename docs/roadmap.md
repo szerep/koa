@@ -4,7 +4,7 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
 
 ## Status
 
-**Phases 1–7 are complete and approved (2026-11-02). Phase 8 is in progress: Steps 1–8 of 12 approved (2026-11-03). Next: Step 9 (notifications).**
+**Phases 1–7 are complete and approved (2026-11-02). Phase 8 is complete and approved (2026-11-03). Next: Phase 9 (PWA and mobile optimization).**
 
 | Phase | Status | Goal | Key deliverables | Done when |
 |---|---|---|---|---|
@@ -15,7 +15,7 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
 | **5. Coins and rewards** | ✅ Approved | Studying pays | Idempotent wallet ledger, cycle and daily-goal bonuses, coin fly-up animation | No double payouts (tested) |
 | **6. Shop and customization** | ✅ Approved | Spend coins on Koa | Catalog, shop UI, buy, equip and unequip, wallet with separate earned and spent, wardrobe persistence, accessory-layer integration. **Accessory artwork not produced yet** (`docs/phase-6/accessory-assets.md`). | Purchases, ownership and outfit persist (tested); items appear on Koa once their art exists |
 | **7. Personality and interactions** | ✅ Approved | Koa feels alive | Koala state machine, ambient actions, tap and multi-tap reactions, speech bubbles, nap on inactivity, show-off on equip. Needs Tier 2 poses from the art pipeline; until they exist it works within the idle frames. | Never interrupts focus; no repeated actions; respects reduced motion |
-| **8. Statistics and settings** | In progress (Steps 1–8 of 12 approved) | Progress you can see | Totals, streak, daily goal, weekly chart. Settings (`docs/phase-8/settings-plan.md`): **custom focus, short break and long break durations (R1)**, **adjustable daily goal (R2)**, notifications, wake lock, sounds, data reset and export. Evening theme (stretch goal). | Stats derived from history (tested); custom durations validated, persisted, never altering a running session (tested) |
+| **8. Statistics and settings** | ✅ Approved (all 12 steps) | Progress you can see | Totals, streak, daily goal, weekly chart. Settings (`docs/phase-8/settings-plan.md`): **custom focus, short break and long break durations (R1)**, **adjustable daily goal (R2)**, long break interval, notifications, wake lock, sounds, data reset and export. Evening theme (stretch goal) not done; deferred. | Stats derived from history (tested); custom durations validated, persisted, never altering a running session (tested) |
 | **9. PWA and mobile optimization** | Planned | Installable and offline | `vite-plugin-pwa`, manifest, Apple touch icons and splash screens, offline caching of art and fonts, standalone polish, performance budget (keep the design sheet out of the shipped bundle) | Installs on iPhone; works offline; Lighthouse PWA checks pass |
 | **10. Testing and polish** | Planned | Ship quality | Committed Playwright suite, accessibility pass, motion tuning, copy pass, bug bash | Release candidate |
 
@@ -83,3 +83,16 @@ Each phase ends with a working build (`pnpm build` and `pnpm lint` pass), a Play
   - Stats screen: today ring, streaks, all-time totals, 7-day CSS bar chart with screen-reader text, Koa empty state.
   - Keep screen on: Screen Wake Lock held only during a running focus session with the page visible; disabled with an explanation where unsupported.
   - Remaining: Step 9 notifications, Step 10 sounds, Step 11 export and reset, Step 12 docs and final checks.
+- **2026-11-03:** Phase 8 Step 9 (notifications) approved: off by default, permission asked only from the Settings switch, explained when unsupported, blocked or dismissed. Two additional decisions:
+  - No notification while the user is looking at Koa (page visible and window focused).
+  - A completion noticed more than 5 minutes late isn't announced (no stale notifications).
+- **2026-11-03:** Phase 8 Step 10 (sounds) approved: one soft Web Audio chime, off by default. Completions noticed more than 5 minutes late don't chime, and turning Sounds on plays the chime once as a preview.
+- **2026-11-03:** Phase 8 Step 11 (export and reset) approved:
+  - Export is a JSON file wrapping the exact `koa:v1` save (`format: "koa-export"`, `exportVersion: 1`). No import.
+  - Reset progress is two-step. It writes and verifies a backup (`koa:backup:reset`) first and deletes nothing if that fails.
+  - It keeps Settings and the notification permission, and reloads every store, so no old session can pay, notify, chime or hold the wake lock (in other tabs too).
+- **2026-11-03:** Phase 8 Step 12 (documentation and final checks):
+  - README, `CLAUDE.md`, architecture, roadmap and the settings plan updated to the implementation as built.
+  - Full review of the Phase 8 changes (Steps 1–11): no bugs found and no code changed.
+  - `pnpm test` (440 tests in 25 files), `pnpm lint` and `pnpm build` pass. Browser checks in Chromium at 390×844 and 1440×900 covered every main flow, including a real-time completion, real Wake Lock, Notification and Web Audio APIs, a real download, and a reset with a second tab open.
+  - The evening theme (stretch goal) is deferred. **Phase 8 approved and complete. Next: Phase 9.**

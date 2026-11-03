@@ -3,12 +3,17 @@ import { rewardRules } from '../../config/rewards'
 import { focusPresets, settingsSpec } from '../../config/settings'
 import { sessionsForGoal, type NumericSetting } from '../../core/settings/settings'
 import { isInProgress } from '../../core/timer/engine'
+import { notifications } from '../../features/notifications/store'
+import type { NotificationStatus } from '../../features/notifications/notifications'
 import { settingsStore } from '../../features/settings/store'
+import { sounds } from '../../features/sounds/store'
+import type { SoundStatus } from '../../features/sounds/sounds'
 import { timerStore } from '../../features/timer/store'
 import { wakeLock } from '../../features/wakeLock/store'
 import type { WakeLockStatus } from '../../features/wakeLock/wakeLock'
 import { Stepper } from '../../ui/Stepper'
 import { Switch } from '../../ui/Switch'
+import { DataCard } from './DataCard'
 import './settings.css'
 
 const minutes = (n: number) => `${n} ${n === 1 ? 'minute' : 'minutes'}`
@@ -164,7 +169,11 @@ export function SettingsScreen() {
           While you focus
         </h2>
         <KeepScreenOnRow enabled={settings.keepScreenOn} />
+        <NotificationsRow enabled={settings.notifications} />
+        <SoundsRow enabled={settings.sounds} />
       </section>
+
+      <DataCard />
     </div>
   )
 }
@@ -195,6 +204,103 @@ function KeepScreenOnRow({ enabled }: { enabled: boolean }) {
         <Switch
           checked={enabled && !unsupported}
           onChange={(on) => settingsStore.setFlag('keepScreenOn', on)}
+          labelledBy={labelId}
+          describedBy={hintId}
+          disabled={unsupported}
+        />
+      </div>
+    </div>
+  )
+}
+
+/** What the row says, by permission status (and whether the setting is on, once allowed). */
+function notificationHint(status: NotificationStatus, on: boolean, appleMobile: boolean): string {
+  switch (status) {
+    case 'unsupported':
+      return appleMobile
+        ? 'On iPhone and iPad, notifications work only after you add Koa to your Home Screen (iOS 16.4 or later).'
+        : "This browser can't show notifications."
+    case 'default':
+      return 'Get a notification when a session ends while Koa is in the background. Your browser will ask first.'
+    case 'requesting':
+      return "Answer your browser's prompt to allow notifications."
+    case 'dismissed':
+      return "Koa didn't get permission. Turn this on again whenever you're ready."
+    case 'denied':
+      return "Notifications are blocked for Koa. You can allow them in your browser's site settings."
+    case 'failed':
+      return "Your browser didn't show the last notification. Koa will try again next time."
+    case 'granted':
+      return on
+        ? "Koa will let you know when a session ends while it's in the background. Background tabs can delay it, and a locked phone may not get it."
+        : 'Get a notification when a session ends while Koa is in the background.'
+  }
+}
+
+function NotificationsRow({ enabled }: { enabled: boolean }) {
+  const status = useSyncExternalStore(notifications.subscribe, notifications.getStatus)
+  const labelId = useId()
+  const hintId = useId()
+  const allowed = status === 'granted' || status === 'failed'
+  const on = enabled && allowed
+  return (
+    <div className="settings-row">
+      <div className="settings-row__main">
+        <div className="settings-row__text">
+          <span id={labelId} className="settings-row__label">
+            Session notifications
+          </span>
+          <span id={hintId} className="settings-row__hint" aria-live="polite">
+            {notificationHint(status, on, notifications.appleMobile)}
+          </span>
+        </div>
+        <Switch
+          checked={on}
+          onChange={(next) => {
+            // Asks for permission from the tap itself, never on its own.
+            if (next) void notifications.enable()
+            else notifications.disable()
+          }}
+          labelledBy={labelId}
+          describedBy={hintId}
+          disabled={status === 'unsupported' || status === 'denied'}
+        />
+      </div>
+    </div>
+  )
+}
+
+const soundHints: Record<SoundStatus, string> = {
+  unsupported: "This browser can't play Koa's chime.",
+  off: 'A soft chime when a session ends.',
+  locked: 'Tap anywhere in Koa once and the chime is ready. Browsers only play sound after a tap.',
+  ready: "A soft chime plays when a session ends. Your device's volume and silent mode still apply.",
+  failed: "Your browser didn't play the last chime. Koa will try again next time.",
+}
+
+function SoundsRow({ enabled }: { enabled: boolean }) {
+  const status = useSyncExternalStore(sounds.subscribe, sounds.getStatus)
+  const labelId = useId()
+  const hintId = useId()
+  const unsupported = status === 'unsupported'
+  return (
+    <div className="settings-row">
+      <div className="settings-row__main">
+        <div className="settings-row__text">
+          <span id={labelId} className="settings-row__label">
+            Sounds
+          </span>
+          <span id={hintId} className="settings-row__hint">
+            {soundHints[status]}
+          </span>
+        </div>
+        <Switch
+          checked={enabled && !unsupported}
+          onChange={(on) => {
+            // Turning it on is a tap, so the browser lets the chime play right away as a preview.
+            if (on) sounds.enable()
+            else sounds.disable()
+          }}
           labelledBy={labelId}
           describedBy={hintId}
           disabled={unsupported}

@@ -122,3 +122,88 @@
   color: var(--accent-ink);
   box-shadow: var(--shadow-small);
 }
+
+/* Your data (Step 11): export and reset progress. */
+.data__action {
+  flex-shrink: 0;
+}
+
+/* A failed export or reset: the hint turns into a clear warning (still a live region). */
+.settings-row__hint--alert {
+  color: var(--bark-900);
+  font-weight: 700;
+}
+
+/* The reset confirmation opens in place of its row, like the skip confirmation on Home. */
+.reset-confirm {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-chip);
+  background: var(--blush-200);
+  color: var(--bark-900);
+}
+
+.reset-confirm__title {
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.reset-confirm__lead {
+  font-size: var(--text-label);
+  font-weight: 700;
+}
+
+.reset-confirm__list {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: calc(var(--space-2) * -1);
+  padding-left: var(--space-5);
+  font-size: var(--text-label);
+  text-wrap: pretty;
+}
+
+.reset-confirm__list--deleted {
+  list-style: '–  ';
+}
+
+.reset-confirm__list--kept {
+  list-style: '✓  ';
+}
+
+.reset-confirm__list li::marker {
+  color: var(--bark-600);
+  font-weight: 700;
+}
+
+.reset-confirm__note {
+  color: var(--bark-700);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  text-wrap: pretty;
+}
+
+.reset-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.reset-confirm__actions .btn {
+  flex: 1 1 10rem;
+}
+
+/* The destructive choice: quiet, but unmistakable (dark text on blush, edged in the danger tone). */
+.reset-confirm__delete {
+  background: var(--blush-400);
+  color: var(--bark-900);
+  box-shadow: inset 0 0 0 2px var(--danger);
+}
+
+@media (hover: hover) {
+  .reset-confirm__delete:hover {
+    background: var(--blush-200);
+  }
+}

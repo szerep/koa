@@ -1,6 +1,6 @@
 # Koa — Architecture
 
-*As built through Phase 8, Step 8 (settings, stats, keep screen on). Planned parts are marked **(planned)**.*
+*As built through Phase 8 (settings, stats, keep screen on, notifications, sounds, export and reset). Planned parts are marked **(planned)**.*
 
 ## Principles
 
@@ -8,7 +8,7 @@
 2. **Small stores per feature.** Each feature has a tiny framework-agnostic store (`getState` / `subscribe` / actions) that React reads through `useSyncExternalStore`. There's no Redux or Zustand. Stores apply core transitions, persist the result and broadcast events.
 3. **Storage behind an interface.** `StorageAdapter` (LocalStorage today) keeps IndexedDB or cloud sync possible later without touching features.
 4. **Data, not code, for content.** Timer defaults, reward values, the shop catalog and the character manifest are typed config.
-5. **Features talk through events.** The timer emits `sessionCompleted`, and `src/app/connect.ts` routes it to the wallet. Settings changes are pushed to the timer the same way. Features don't import each other's internals.
+5. **Features talk through events.** The timer emits `sessionCompleted`, and `src/app/connect.ts` routes it to the wallet. Settings changes are pushed to the timer the same way. The wake lock, notifications and sounds subscribe to the timer and settings stores on their own, so the timer knows nothing about them. Features don't import each other's internals.
 
 ## Folder structure
 
@@ -18,21 +18,25 @@ src/
   app/
     App.tsx                 # shell: top bar, tab screens, bottom nav, reward overlay
     connect.ts              # one-time wiring: timer → rewards, settings → timer, timer/wallet/input → Koa,
-                            # wake lock launch check, cross-tab refresh (wallet, wardrobe, settings)
+                            # wake lock / notification / sound launch checks, cross-tab refresh
+                            # (wallet, wardrobe, settings) and cross-tab reset detection
     useHashTab.ts           # tab state mirrored to location.hash (#/shop)
     useTimerAmbience.ts     # tab title countdown, focus-mode dimming, completion announcement
-    screens/                # HomeScreen, ShopScreen, SettingsScreen, StatsScreen,
+    screens/                # HomeScreen, ShopScreen, SettingsScreen (+ DataCard: export, reset), StatsScreen,
                             # ComingSoonScreen (Koa resting state, used for the Stats empty state)
   core/                     # pure logic, no React (unit tested)
     timer/engine.ts         # timer state machine + transitions
     timer/restore.ts        # validate/repair persisted timer state
     timer/wakeLock.ts       # shouldKeepScreenOn: running focus session + setting on
+    timer/notification.ts   # sessionNotification: what to announce for a fresh completion (or null)
+    timer/chime.ts          # shouldChime: fresh completions only
     rewards/wallet.ts       # earned ledger, spending, derived totals, reward rules
     shop/shop.ts            # purchase, ownership, wardrobe (equip/unequip), restore
     koala/brain.ts          # Koa's behavior state machine (ambient, taps, speech, naps)
     koala/context.ts        # timer state → Koa context (idle / focus / break)
     settings/settings.ts    # settings model: validation, stepping, typed input, restore, timerConfigFrom
     stats/stats.ts          # stats derived from the ledger: today, 7-day window, totals, streaks, goal days
+    data/data.ts            # export envelope, file name, reset state, reset summary, isProgressReset
     time.ts                 # local-day keys, calendar-day arithmetic (DST-safe)
   features/                 # React-facing stores, hooks and components per domain
     timer/                  # timerStore, store (singleton), useTimer, TimerFace, format
@@ -41,6 +45,9 @@ src/
     settings/               # settingsStore, store (singleton; loaded before the timer store)
     stats/                  # format (durations, day labels, chart scale), useNow (rolls over at midnight)
     wakeLock/               # Keep screen on: controller (injected browser API), bindWakeLock (timer + setting), store
+    notifications/          # notifier (injected NotificationEnv), bindNotifications (timer events + setting), store
+    sounds/                 # sound controller (injected SoundEnv), chime synthesis, bindSounds, store
+    data/                   # progressData (export, two-step reset; storage and download injected), store + reloadProgress
     koala/                  # manifest.ts (poses + accessory art), Koala.tsx (rendering + motions),
                             # koalaStore/store (brain + ticking), KoaCompanion (bubble, nap glyphs)
   ui/                       # design-system primitives: Button/IconButton, SegmentedControl,
@@ -49,7 +56,8 @@ src/
     adapter.ts              # StorageAdapter; localStorageAdapter; createMemoryAdapter (tests)
     persistence.ts          # versioned save (koa:v1), slices, migrations, backup
   config/                   # timerDefaults.ts, rewards.ts, catalog.ts, koalaBehavior.ts, koalaLines.ts,
-                            # settings.ts (ranges, defaults, focus presets)
+                            # settings.ts (ranges, defaults, focus presets), notifications.ts (copy, 5-min
+                            # staleness), sounds.ts (chime spec and timing)
   styles/                   # tokens.css (design tokens), base.css (reset, fonts)
 ```
 
@@ -82,7 +90,7 @@ interface TimerState {
 - **Reset** returns to the full duration of the current mode and keeps the cycle. **Mode chips** are locked while a session is in progress.
 - **Settings:** the timer store is created from the saved settings (`timerConfigFrom`), and `setConfig` applies later changes (`connect.ts`, including other tabs). `applyConfig` and `fitIdleSession` only refit a session that hasn't started; running and paused sessions keep their length. Lowering the interval to or below the focus sessions already done turns a waiting focus session or short break into the earned long break. Details: `docs/phase-8/settings-plan.md`.
 - **Event order:** the store emits events *before* saving the timer. A crash in between causes a repeat completion (ignored by the reward ledger) rather than a lost reward.
-- **iOS limitation:** a suspended web app can't run code, so completion is shown when the app is reopened. Notifications (planned, Phase 8) will only be available while the app can run, or later via push.
+- **iOS limitation:** a suspended web app can't run code, so completion is shown when the app is reopened. Notifications and the chime only fire while the page can run; there's no push server.
 
 ## Wallet and rewards (`src/core/rewards/wallet.ts`)
 
@@ -118,14 +126,15 @@ interface Wallet {
 - Saves happen on each state change; ticks are never saved.
 - **`settings`** (Phase 8) is an optional slice: older saves without it load the defaults, with no version bump. Each field is validated on its own.
 - **Stats** are derived from the wallet's earned ledger (`src/core/stats/`). There's no separate `history` slice.
+- **`koa:backup:reset`** holds the export of the data from before the latest Reset progress (see below). The app never reads it.
 
 ## Settings (`src/core/settings/`, Phase 8)
 
 - **Model:** `durations` (focus 1–120, short break 1–30, long break 1–60 min), `longBreakEvery` (2–8), `dailyGoalMinutes` (25–480 in 25-minute steps, 480 also valid) and the flags `notifications`, `keepScreenOn`, `sounds` (off by default). Ranges and defaults are in `src/config/settings.ts`; defaults come from `timerDefaults` and `rewardRules`.
 - **Valid values only:** `setNumber` ignores anything off the range or step grid. Typed input is rounded, clamped and snapped on blur (`commitInput`).
 - **Store** (`features/settings/settingsStore.ts`): `getState`, `subscribe`, `setNumber`, `setFlag`, `refresh` (other tabs). Saves on every real change.
-- **Readers:** the timer (`setConfig`), the wallet (`dailyGoalMinutes()` read inside `award()`), the Home cycle leaves, Stats (the goal) and the wake lock (`keepScreenOn`).
-- **Screen** (`SettingsScreen.tsx`): Timer, Daily goal and "While you focus" cards, built from `<Stepper>` and `<Switch>`.
+- **Readers:** the timer (`setConfig`), the wallet (`dailyGoalMinutes()` read inside `award()`), the Home cycle leaves, Stats (the goal), the wake lock (`keepScreenOn`), notifications (`notifications`) and sounds (`sounds`).
+- **Screen** (`SettingsScreen.tsx`): Timer, Daily goal, "While you focus" (Keep screen on, Session notifications, Sounds) and "Your data" (`DataCard.tsx`: Export, Reset progress) cards, built from `<Stepper>`, `<Switch>` and `<Button>`.
 
 ## Stats (`src/core/stats/`, Phase 8)
 
@@ -139,6 +148,28 @@ interface Wallet {
 - **Controller** (`wakeLock.ts`): the browser API comes in as `WakeLockEnv` (real: `browserWakeLockEnv()`; tests: mocks). It holds a lock only while the page is visible, sends one request at a time, releases late or unwanted locks, and catches every failure (status `failed`), so the timer is never affected. Statuses: `unsupported`, `off`, `active`, `failed`.
 - **Binding** (`bindWakeLock.ts`, singleton in `store.ts`): re-checks on every timer change, settings change and `visibilitychange`, so pause, completion, skip, reset and the setting need no timer changes.
 - **Unsupported** (no `navigator.wakeLock` or not a secure context): the switch is disabled with an explanation.
+
+## Notifications (`src/features/notifications/`, Phase 8)
+
+- **Rule** (`core/timer/notification.ts`): only a `sessionCompleted` event noticed at most 5 minutes after `completedAt` (`config/notifications.ts`). The copy names the next session without implying it started; the tag is the session id, so two tabs show one notification.
+- **Notifier** (`notifications.ts`): the browser API comes in as `NotificationEnv` (real: `browserNotificationEnv()`). It shows a notification only if the setting is on, the permission is `granted` and the user isn't looking (page hidden or window unfocused). It uses the service worker registration when there is one, else `new Notification`. Statuses: `unsupported`, `default`, `requesting`, `dismissed`, `denied`, `granted`, `failed`; re-read on focus, visibility and the Permissions API `change` event.
+- **Permission** is requested only by `enable()`, called from the Settings switch tap. Launch, completions and Reset progress never ask.
+- **Binding** (`bindNotifications.ts`): a timer event listener that catches everything, so a failing notification can't stop the wallet's listener or the save.
+
+## Sounds (`src/features/sounds/`, Phase 8)
+
+- **Rule** (`core/timer/chime.ts`): fresh `sessionCompleted` events only (5 minutes, like notifications).
+- **Controller** (`sounds.ts`): the browser API comes in as `SoundEnv` (real: `browserSoundEnv()`, `AudioContext` or `webkitAudioContext`). The context is created or resumed only inside a user gesture (`pointerup`, `touchend`, `keydown`, `click` on `window`) while Sounds is on, and closed when it's turned off. One chime per session id, none closer than 1.5 s apart, and a chime the browser allows only after more than 1 s is dropped. Statuses: `unsupported`, `off`, `locked`, `ready`, `failed`.
+- **Chime** (`chime.ts`, spec in `config/sounds.ts`): two sine notes, each with a quiet octave and an exponential fade; every node is disconnected when the chime ends.
+- **Binding** (`bindSounds.ts`): `enable()` saves the setting and plays a preview inside the tap. The event listener catches everything.
+
+## Export and reset (`src/features/data/`, Phase 8)
+
+- **Rules** (`core/data/data.ts`): `buildExport` wraps the `koa:v1` structure in `{ format: "koa-export", exportVersion: 1, exportedAt, storageKey, data }`; `progressResetState(settings)` is `{ version: 1, settings }`; `progressSummary` feeds the confirmation; `isProgressReset(oldValue, newValue)` detects another tab's reset (the progress slices were dropped).
+- **Controller** (`progressData.ts`): storage, a snapshot of the stores and the download are injected. Export is built from the stores' in-memory state and downloaded through a Blob link. Reset is `requestReset()` then `confirmReset()`: write and read back the backup (`koa:backup:reset`), then write and read back the settings-only save, then reload. If either write fails, nothing is deleted.
+- **`reloadProgress()`** (`store.ts`): `timerStore.reload()` (drops the session without events, so it can't pay, notify or chime), `walletStore.refresh()`, `wardrobeStore.refresh()`, `sounds.cancelPending()`, `wakeLock.update()` and `koalaStore.reset()`. Settings and the notification permission are untouched.
+- **Other tabs:** the `storage` listener in `connect.ts` runs `reloadProgress()` when `isProgressReset` is true, before the usual refreshes.
+- **No import** (out of scope).
 
 ## Character rendering (`src/features/koala/`)
 

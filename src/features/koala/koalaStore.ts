@@ -91,6 +91,8 @@ export function createKoalaStore({
     breakOver: () => set(breakOver(state, now(), env)),
     showOff: () => set(showOff(state, now(), env)),
     greet: () => set(greet(state, now(), hour(), env)),
+    /** Start over (after Reset progress): no pending celebration or line about old coins. */
+    reset: (next: KoalaContext) => set(createKoala(now(), next, env)),
     /** Advance time now (tests, and catching up when the page becomes visible). */
     tick: onTick,
   }

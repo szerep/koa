@@ -1,11 +1,15 @@
 import { koalaContextFor } from '../core/koala/context'
 import type { CelebrationLevel } from '../core/koala/brain'
+import { isProgressReset } from '../core/data/data'
 import type { Grant } from '../core/rewards/wallet'
 import { timerConfigFrom } from '../core/settings/settings'
+import { reloadProgress } from '../features/data/store'
 import { koalaStore } from '../features/koala/store'
+import { notifications } from '../features/notifications/store'
 import { walletStore } from '../features/rewards/store'
 import { settingsStore } from '../features/settings/store'
 import { wardrobeStore } from '../features/shop/store'
+import { sounds } from '../features/sounds/store'
 import { timerStore } from '../features/timer/store'
 import { wakeLock } from '../features/wakeLock/store'
 import { STORAGE_KEY } from '../storage/persistence'
@@ -42,6 +46,14 @@ export function connectFeatures() {
   // to both and to page visibility). Check once here for a focus session restored on launch.
   wakeLock.update()
 
+  // Session-complete notifications listen to timer events on their own. Never asks for
+  // permission here: only turning the setting on does. Read the current permission once.
+  notifications.update()
+
+  // Sounds: the chime listens to timer events on its own. No audio starts here; the audio
+  // context is only set up inside a tap or key press while Sounds is on (autoplay rules).
+  sounds.update()
+
   // Koa: celebrate payouts, note finished breaks, follow the timer's context.
   // Registered after the wallet, so a finished focus session celebrates with its payout.
   walletStore.onGrant((grants) => koalaStore.celebrate(celebrationFor(grants)))
@@ -65,6 +77,8 @@ export function connectFeatures() {
   // Another tab saved: pick up its coins, purchases, outfit and settings.
   window.addEventListener('storage', (e) => {
     if (e.key !== STORAGE_KEY) return
+    // Another tab reset progress: drop this tab's session too, so it can't pay or be saved back.
+    if (isProgressReset(e.oldValue, e.newValue)) reloadProgress()
     walletStore.refresh()
     wardrobeStore.refresh()
     settingsStore.refresh()
