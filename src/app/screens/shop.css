@@ -259,7 +259,7 @@
   }
 }
 
-@media (min-width: 960px) {
+@media (min-width: 960px), (orientation: landscape) and (max-height: 500px) {
   .shop__toast-area {
     bottom: calc(var(--safe-bottom) + 32px);
   }

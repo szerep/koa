@@ -3,7 +3,7 @@
 Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and spend them on accessories for Koa. It should look and feel like a polished indie mobile game, not a productivity dashboard.
 
 - **Primary target:** iPhone (Safari and, from Phase 9, an installed PWA). It must also work on iPad and desktop browsers.
-- **Status:** Phases 1–8 are complete and approved. **Phase 9 (PWA and mobile optimization) is in progress: Steps 1–6 of 10 are approved and committed (2026-11-03). Next is Step 7, notifications through the service worker.** See `docs/roadmap.md` and `docs/phase-9/pwa-plan.md`.
+- **Status:** Phases 1–8 are complete and approved. **Phase 9 (PWA and mobile optimization) is in progress: Steps 1–8 of 10 are approved; Step 9 (mobile optimization and the performance budget) is approved with one open item: the Lighthouse scores are not measured yet (Step 10). Steps 1–6 were committed on 2026-11-03, Steps 7–9 on 2026-11-04. Next: Step 10 (deployment and real-device verification).** See `docs/roadmap.md` and `docs/phase-9/pwa-plan.md`.
 
 ## Workflow
 
@@ -29,7 +29,7 @@ Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and sp
 | `pnpm dev` | Vite dev server (if port 5173 is taken, use `pnpm dev --port 5180 --strictPort`) |
 | `pnpm test` | Unit tests (Vitest), `*.test.ts` next to the code |
 | `pnpm lint` | ESLint |
-| `pnpm build` | Type check (`tsc -b`), production build, then `scripts/check-build.mjs` (fails on reference art, oversized images, a wrong precache or mismatched splash links) |
+| `pnpm build` | Type check (`tsc -b`), production build, then `scripts/check-build.mjs` (fails on reference art, oversized images, a wrong precache, mismatched splash links or the performance budget) |
 | `pnpm preview` | Serve `dist/` (the only way to run the service worker) |
 | `KOA_SW_KILL_SWITCH=1 pnpm build` | Emergency build: the worker removes itself and Koa's caches (data kept). See the Phase 9 plan |
 | `python -I scripts/art/normalize_export.py` | Re-export character frames to `public/characters/` |
@@ -61,8 +61,9 @@ src/core/      pure TypeScript logic, no React/DOM, unit tested
   koala/       brain.ts (Koa's behavior state machine), context.ts (timer → Koa context)
   settings/    settings.ts (model, validation, stepping, timerConfigFrom)
   stats/       stats.ts (stats derived from the earned ledger)
-  data/        data.ts (export envelope, reset state and summary, isProgressReset)
-  pwa/         update.ts (shouldOfferUpdate, isUpdateCheckDue), install.ts (installHelp, detectInstallBrowser)
+  data/        data.ts (export envelope, reset state and summary, isProgressReset), exportMethod.ts (share vs download)
+  pwa/         update.ts (shouldOfferUpdate, isUpdateCheckDue), install.ts (installHelp, detectInstallBrowser),
+               notificationClick.ts (pickClient, focusOrOpenKoa: what a notification tap does)
   time.ts      local-day keys, addDays/isDayKey (calendar arithmetic, DST-safe)
 src/features/  framework-agnostic stores (getState/subscribe/actions) + React hooks/components
   timer/ rewards/ shop/ koala/ settings/ stats/ wakeLock/ notifications/ sounds/ data/ pwa/
@@ -125,12 +126,12 @@ Full details: `docs/phase-8/settings-plan.md` ("Decisions" and "Implementation d
 - **Settings screen** (`SettingsScreen.tsx`): a Timer card (steppers, focus presets 15/25/45/50), a Daily goal card, a "While you focus" card (Keep screen on, Session notifications, Sounds switches) and a "Your data" card (`DataCard.tsx`: Export, Reset progress).
 - **Stats** (`src/core/stats/stats.ts`, `StatsScreen.tsx`): computed from `focus:` and `goal:` ledger entries. A session counts on the `day` saved in its entry. The streak counts consecutive local days with a completed focus session; the current streak continues from yesterday until today ends, and future-dated entries never extend it. Legacy focus entries without `minutes` are estimated from coins for Stats only (documented limitation). The screen shows a today ring against the goal, streaks, all-time totals, a 7-day CSS bar chart with screen-reader text, and a Koa empty state.
 - **Keep screen on** (`src/features/wakeLock/`): held only while the setting is on, the page is visible and a focus session is running before its `endsAt`. The browser API is injected (`WakeLockEnv`) and mocked in tests. It's released on pause, completion, skip, reset, setting off and hidden page, and reacquired when the page is visible again. Failures never touch the timer; unsupported browsers get a disabled switch with an explanation.
-- **Notifications** (`src/features/notifications/`): off by default. Permission is requested **only** from the Settings switch tap (`enable()`), never on launch, completion or reset. Shown only for a `sessionCompleted` noticed ≤ 5 min late, with the setting on, permission `granted` and the user not looking (page hidden or window unfocused). Tag = session id. Uses the service worker registration when there is one (production builds since Phase 9 Step 3), else `new Notification`. The worker has no `notificationclick` yet (Step 7), so a click doesn't focus Koa. Unsupported/denied/dismissed states are explained in the row; on iPhone/iPad the row links to the install steps. iPhone: Home Screen app on iOS 16.4+ only, and nothing while suspended (no push server).
+- **Notifications** (`src/features/notifications/`): off by default. Permission is requested **only** from the Settings switch tap (`enable()`), never on launch, completion or reset. Shown only for a `sessionCompleted` noticed ≤ 5 min late, with the setting on, permission `granted` and the user not looking (page hidden or window unfocused). Tag = session id. Since Phase 9 Step 7 it waits for the *active* worker registration (`ready`, 3 s timeout) and uses `new Notification` only without one and only on desktop (never Android/iOS); a tap focuses an open Koa window or opens Koa (`src/sw.ts`, `core/pwa/notificationClick.ts`). Unsupported/denied/dismissed states are explained in the row; on iPhone/iPad the row links to the install steps. iPhone: Home Screen app on iOS 16.4+ only, and nothing while suspended (no push server).
 - **Sounds** (`src/features/sounds/`): off by default; one Web Audio chime (no files). The `AudioContext` is created or resumed only inside a user gesture while Sounds is on; after a reload the row says a tap is needed. Turning it on plays a preview. Fresh completions only (≤ 5 min), once per session id, ≥ 1.5 s apart; a chime that can't play within 1 s is dropped.
 - **Export and reset** (`src/core/data/`, `src/features/data/`): Export downloads `koa-data-YYYY-MM-DD.json` = `{ format: "koa-export", exportVersion: 1, exportedAt, storageKey, data: <koa:v1> }`, built from in-memory store state. No import. Reset is two-step; it writes and reads back `koa:backup:reset`, then writes `{ version: 1, settings }` and reads it back (either failing ⇒ nothing deleted), then `reloadProgress()` (timer `reload()` drops the session **without events**, wallet/wardrobe refresh, `sounds.cancelPending()`, wake lock update, `koalaStore.reset()`). **Settings and the notification permission are kept.** Other tabs detect it via `isProgressReset` and reload too.
 - **Event listeners in timer events catch everything**, so wake lock, notification or audio failures can never stop the wallet's payout or the save.
 
-## Phase 9 (in progress; Steps 1–6 approved)
+## Phase 9 (in progress; Steps 1–9 approved, Lighthouse outstanding; Step 10 next)
 
 Full details: `docs/phase-9/pwa-plan.md` (each step's "Implementation details", section 8 decisions D1–D13, section 9 deployment).
 - **Step 1:** the design sheet lives in `art/reference/` and never ships. `scripts/check-build.mjs` (unit tested) runs after every build.
@@ -139,9 +140,11 @@ Full details: `docs/phase-9/pwa-plan.md` (each step's "Implementation details", 
 - **Step 4:** prompted updates only (D3): `updateStore` + `UpdatePrompt` ("Koa has an update", Update / Later), never during a running focus session, checks on launch and visibility at most hourly, one reload of the tapping tab only. App version caption (`__APP_VERSION__`). Kill switch `KOA_SW_KILL_SWITCH=1`.
 - **Step 5:** 30 iOS splash JPEGs (`public/splash/`, `make_splash.py`): the idle frame at 40% of the shorter side on cream; iPhone portrait, iPad both orientations; exact `apple-touch-startup-image` links; not precached; size limits in the build check.
 - **Step 6:** `isStandalone()` (`displayMode.ts`) and the "Install Koa" card in Settings (`InstallCard.tsx`, `installStore.ts`, rules in `core/pwa/install.ts`). Chromium's `beforeinstallprompt` is captured early with its banner suppressed, opened **only** from the Install tap and used **once**; iPhone/iPad get Share → Add to Home Screen steps and the separate-data note (D10); other browsers their menu command; hidden in the installed app. No iOS long-press callout on the nav tabs or Koa. Pinch zoom stays allowed.
+- **Step 7 (approved):** `showNotification.ts` (active registration via `ready`, icon/badge/`data.url`, constructor only on desktop without a worker); `notificationclick` in `src/sw.ts` closes the notification and calls `focusOrOpenKoa` (`core/pwa/notificationClick.ts`: `pickClient` prefers a focused Koa window, then any Koa window; else `openWindow` inside the scope). A real tap is verified on Android in Step 10.
+- **Step 8 (approved):** export through the share sheet (D11). `exportMethod` (`core/data/exportMethod.ts`): share only when standalone **and** `canShare({ files: [file] })`; otherwise the Phase 8 download (browser tabs always download). `FileShare` is injected into `createProgressData` (`browserFileShare` in `features/data/store.ts`). `navigator.share` is called synchronously from the Export tap with the same filename, `application/json` and text; a second tap is ignored while the sheet is open. `AbortError` goes back to idle quietly; other failures fall back to the download, then the existing failure message. The button stays "Export".
 - **Never** auto-reload, show install banners, or prompt for install or notifications without a tap. No storage or schema changes in Phase 9 (D9).
 - **Hosting (Step 10, not connected yet):** Cloudflare Pages Free, GitHub `main`, `pnpm build` → `dist`, Node 24 (`.node-version`) and pnpm 12.14.0 (`PNPM_VERSION`, `packageManager`), `public/_headers` (`no-cache` for `sw.js`, `/`, `index.html`, the manifest; immutable `/assets/*`). Those three files are added in Step 10.
-- **Known for Step 9:** Start partly under the nav at 375×667, and Home is tall in phone landscape.
+- **Step 9 (approved; Lighthouse outstanding):** the build check enforces `BUDGET` (entry JS = `index.html`'s module scripts ≤ 160 kB gzip, now 151.2; CSS ≤ 12 kB, 7.8; precache ≤ 1.2 MB, 967.8 kB) and reports later chunks and `sw.js` separately (159.6 kB is all JS together). Measured first visit (Playwright, Lighthouse-like throttling, not Lighthouse): LCP ~2.09 s, CLS 0.0002, so no loading changes. Lighthouse Performance, Accessibility and Best Practices have **not been measured** (the run was blocked by session permissions in Step 9); they are measured in Step 10; never record estimated scores. CSS-only layout fixes: the Home stage shrinks with the height (`100dvh − 440px − safe areas`), so Start clears the nav at 375×667; `(orientation: landscape) and (max-height: 500px)` puts the nav in a left rail and Home in two columns; `html { scroll-padding-bottom }` keeps focused controls (the skip confirmation) clear of the bottom nav; segmented options 44 px; below 360 px, 12 px gutters. 195 px wide (200% page zoom on a phone) isn't supported.
 
 ## The mascot (non-negotiable)
 
@@ -183,6 +186,11 @@ Full details: `docs/phase-9/pwa-plan.md` (each step's "Implementation details", 
 
 ## Next steps
 
-- **Phase 9, Step 7 (next):** notifications through the service worker (`notificationclick` focuses or opens Koa; Android Chrome). Then Step 8 (export through the share sheet in installed apps, D11), Step 9 (mobile optimization and the performance budget), Step 10 (Cloudflare Pages deployment, device verification, docs). One step at a time, each approved.
+- **Phase 9, Step 10 (next):** connect and deploy Cloudflare Pages (Free) per the plan's section 9, then verify on real devices and browsers. Open items carried into it:
+  - Lighthouse mobile Performance (≥ 90), Accessibility and Best Practices (≥ 95), median of 3 runs, plus the D1 installability checklist. Not measured yet.
+  - iPhone: install, splash, offline, landscape safe areas and notch placement (only simulated so far), real file sharing (Export → share sheet → Save to Files), notifications in the Home Screen app.
+  - Android Chrome: install, offline, a worker notification with the badge, and a real notification tap opening or focusing Koa.
+  - Desktop install and offline smoke checks; the update flow after a second deployment.
+- **Known limitations (accepted for now):** in a Safari tab on iPhone SE, Home may need a short scroll before Start; at 195 px wide (a phone at 200% page zoom) the layout scrolls sideways (Phase 10 accessibility pass).
 - **Phase 10:** a committed Playwright suite plus polish.
 - **Deferred (not in current scope):** accessory artwork, hoodie recolors (need approval), the evening/dark theme, revisiting the icon composition, data import, push notifications, accounts or sync.

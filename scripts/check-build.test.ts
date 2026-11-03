@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BUDGET,
   ICON_LIMITS,
   LIMITS,
   PRECACHE_FIXED,
   SPLASH_LIMITS,
+  checkBudget,
   checkFiles,
   checkPrecache,
   checkSplash,
   checkWorker,
+  entryScripts,
   imageSize,
   isSelfDestroyingWorker,
   parseStartupMedia,
@@ -395,5 +398,75 @@ describe('checkSplash', () => {
 
   it('accepts a kill switch build (no precache list)', () => {
     expect(checkSplash({ html, splash, precached: null }).errors).toEqual([])
+  })
+})
+
+describe('entryScripts', () => {
+  it('finds the module script Vite writes, and modulepreloads', () => {
+    const html = [
+      '<script type="module" crossorigin src="/assets/index-abc.js"></script>',
+      '<link rel="modulepreload" crossorigin href="/assets/vendor-def.js">',
+      '<link rel="stylesheet" crossorigin href="/assets/index-abc.css">',
+      '<link rel="preload" as="image" href="/characters/koa_idle_neutral.webp">',
+    ].join('\n')
+    expect(entryScripts(html)).toEqual(['assets/index-abc.js', 'assets/vendor-def.js'])
+  })
+
+  it('ignores classic and external scripts, and lists a file once', () => {
+    const html = [
+      '<script src="/legacy.js"></script>',
+      '<script type="module" src="https://example.com/x.js"></script>',
+      '<script type="module" src="//cdn.example.com/y.js"></script>',
+      '<script type="module" src="/assets/index-abc.js"></script>',
+      '<link rel="modulepreload" href="/assets/index-abc.js">',
+    ].join('\n')
+    expect(entryScripts(html)).toEqual(['assets/index-abc.js'])
+  })
+
+  it('returns nothing for a page without module scripts', () => {
+    expect(entryScripts('<html><body></body></html>')).toEqual([])
+  })
+})
+
+describe('checkBudget', () => {
+  const ok = { entryJs: ['assets/index-abc.js'], entryJsGzip: 151_206, cssGzip: 7_800, precacheBytes: 966_300 }
+
+  it('uses the approved budget (D12)', () => {
+    expect(BUDGET).toEqual({ entryJsGzipBytes: 160_000, cssGzipBytes: 12_000, precacheBytes: 1_200_000 })
+  })
+
+  it('accepts the current build', () => {
+    expect(checkBudget(ok)).toEqual([])
+  })
+
+  it('accepts each size exactly at its limit', () => {
+    expect(
+      checkBudget({ ...ok, entryJsGzip: BUDGET.entryJsGzipBytes, cssGzip: BUDGET.cssGzipBytes, precacheBytes: BUDGET.precacheBytes }),
+    ).toEqual([])
+  })
+
+  it('fails when the entry JS is over budget', () => {
+    expect(checkBudget({ ...ok, entryJsGzip: BUDGET.entryJsGzipBytes + 1 })).toEqual([
+      'budget: entry JS is 160.0 kB gzip, limit 160.0 kB',
+    ])
+  })
+
+  it('fails when the CSS is over budget', () => {
+    expect(checkBudget({ ...ok, cssGzip: 12_400 })).toEqual(['budget: CSS is 12.4 kB gzip, limit 12.0 kB'])
+  })
+
+  it('fails when the precache is over budget, but not in a kill switch build (no precache)', () => {
+    expect(checkBudget({ ...ok, precacheBytes: 1_250_000 })).toEqual(['budget: precache is 1250.0 kB, limit 1200.0 kB'])
+    expect(checkBudget({ ...ok, precacheBytes: null })).toEqual([])
+  })
+
+  it('fails when no entry script was found, so the JS budget cannot be skipped by accident', () => {
+    expect(checkBudget({ ...ok, entryJs: [], entryJsGzip: 0 })).toEqual([
+      'index.html: no module script found (entry JS budget)',
+    ])
+  })
+
+  it('reports every row that is over budget', () => {
+    expect(checkBudget({ entryJs: ['a.js'], entryJsGzip: 200_000, cssGzip: 20_000, precacheBytes: 2_000_000 })).toHaveLength(3)
   })
 })

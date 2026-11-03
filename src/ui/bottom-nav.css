@@ -88,3 +88,33 @@
     border-radius: 36px;
   }
 }
+
+/*
+ * Phones in landscape (Phase 9 Step 9): a floating bar would take a fifth of the height and
+ * cover Koa, so the nav becomes a compact rail on the left, clear of the notch (safe-left).
+ */
+@media (orientation: landscape) and (max-height: 500px) {
+  .nav {
+    left: calc(var(--safe-left) + 12px);
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    width: 80px;
+  }
+
+  .nav__list {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 6px;
+    border-radius: 40px;
+  }
+
+  .nav__item {
+    height: 56px;
+    border-radius: 28px;
+  }
+
+  .nav__active {
+    border-radius: 28px;
+  }
+}

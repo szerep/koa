@@ -8,7 +8,8 @@
 
 .segmented__option {
   position: relative;
-  min-height: 40px;
+  min-height: 44px; /* the minimum tap target (Phase 9 Step 9; was 40px) */
+  white-space: nowrap;
   padding: 0 var(--space-4);
   border-radius: var(--radius-full);
   font-size: var(--text-label);

@@ -1,6 +1,10 @@
 /**
- * Export and Reset progress (Phase 8, Step 11). Framework-agnostic: the save, the download and
- * the stores to reload are injected, so every path (failures included) is tested without a browser.
+ * Export and Reset progress (Phase 8, Step 11). Framework-agnostic: the save, the download, the
+ * share sheet and the stores to reload are injected, so every path (failures included) is tested
+ * without a browser.
+ *
+ * Export (Phase 9, Step 8, D11): in an installed app that can share the file, the Export tap opens
+ * the system share sheet; everywhere else it's the Phase 8 download. The file is the same in both.
  *
  * Reset is two steps: `requestReset()` shows what would be deleted, and only `confirmReset()`
  * deletes it. Before deleting, the current data is written to `koa:backup:reset` and read back;
@@ -15,6 +19,7 @@ import {
   serializeExport,
   type ProgressSummary,
 } from '../../core/data/data'
+import { exportMethod, isShareCancelled } from '../../core/data/exportMethod'
 import type { Wallet } from '../../core/rewards/wallet'
 import type { Wardrobe } from '../../core/shop/shop'
 import type { TimerState } from '../../core/timer/engine'
@@ -32,9 +37,30 @@ export interface ProgressSnapshot {
 /** Save a text file for the user. Throws if the browser can't. */
 export type Download = (fileName: string, text: string, mimeType: string) => void
 
+/**
+ * The Web Share API, as Koa uses it (Phase 9, Step 8). Injected so tests never open a real sheet.
+ * Leave it out (or let `canShare` say false) and Export always downloads.
+ */
+export interface FileShare {
+  /** Running as an installed app, checked at tap time. */
+  isStandalone(): boolean
+  /** `navigator.canShare(data)`; false when the API is missing. */
+  canShare(data: ShareData): boolean
+  /** `navigator.share(data)`. Rejects with `AbortError` when the user closes the sheet. */
+  share(data: ShareData): Promise<void>
+}
+
+/**
+ * - `exported`: the download was handed to the browser.
+ * - `sharing`: the share sheet is open (a second tap is ignored until it closes).
+ * - `shared`: the user picked where the file goes.
+ * - `failed`: neither the share sheet nor the download worked.
+ */
 export type ExportStatus =
   | { kind: 'idle' }
   | { kind: 'exported'; fileName: string }
+  | { kind: 'sharing'; fileName: string }
+  | { kind: 'shared'; fileName: string }
   | { kind: 'failed' }
 
 /**
@@ -61,8 +87,13 @@ export interface ProgressDataOptions {
   /** Re-read every store from the save (timer, wallet, wardrobe, Koa…). Called after a reset. */
   reload: () => void
   download: Download
+  /** The share sheet for installed apps (Step 8). Without it, Export always downloads. */
+  share?: FileShare
   now?: () => number
 }
+
+/** The share sheet's title for the export file. */
+export const SHARE_TITLE = 'Koa data'
 
 export type ProgressData = ReturnType<typeof createProgressData>
 
@@ -78,8 +109,21 @@ function writeVerified(storage: StorageAdapter, key: string, value: string): boo
   }
 }
 
-export function createProgressData({ storage, snapshot, reload, download, now = Date.now }: ProgressDataOptions) {
+/** Never throws: a broken capability check just means "no". */
+function safely(check: () => boolean): boolean {
+  try {
+    return check() === true
+  } catch {
+    return false
+  }
+}
+
+export function createProgressData({ storage, snapshot, reload, download, share, now = Date.now }: ProgressDataOptions) {
   let state: DataState = { export: { kind: 'idle' }, reset: { kind: 'idle' } }
+  /** The share sheet is open: further Export taps are ignored (a second `share()` would reject). */
+  let sharing = false
+  /** Bumped by `dismiss()`, so a sheet that closes after the user left the screen sets no message. */
+  let exportGeneration = 0
   const listeners = new Set<() => void>()
 
   const set = (next: Partial<DataState>) => {
@@ -111,22 +155,74 @@ export function createProgressData({ storage, snapshot, reload, download, now = 
       }
     },
 
-    /** Download everything as a JSON file. Never changes any data. */
-    exportData(): boolean {
+    /**
+     * Save everything as a JSON file. Never changes any data. Call it only from the Export tap:
+     * the share sheet needs that user gesture, so the file is built and `share()` is called
+     * synchronously, with no await before it.
+     *
+     * Download: returns true/false right away, as in Phase 8. Share sheet: returns a promise that
+     * resolves when the sheet closes (true if shared, false if cancelled or nothing worked).
+     */
+    exportData(): boolean | Promise<boolean> {
+      if (sharing) return false
       const fileName = exportFileName(now())
       const text = exportText()
       if (text === null) {
         set({ export: { kind: 'failed' } })
         return false
       }
-      try {
-        download(fileName, text, JSON_TYPE)
-      } catch {
-        set({ export: { kind: 'failed' } })
-        return false
+
+      const downloadFile = (): boolean => {
+        try {
+          download(fileName, text, JSON_TYPE)
+        } catch {
+          set({ export: { kind: 'failed' } })
+          return false
+        }
+        set({ export: { kind: 'exported', fileName } })
+        return true
       }
-      set({ export: { kind: 'exported', fileName } })
-      return true
+
+      if (!share) return downloadFile()
+      let data: ShareData
+      try {
+        data = { files: [new File([text], fileName, { type: JSON_TYPE })], title: SHARE_TITLE }
+      } catch {
+        return downloadFile() // no File constructor: no file sharing either
+      }
+      const method = exportMethod({
+        standalone: safely(() => share.isStandalone()),
+        canShareFiles: safely(() => share.canShare(data)),
+      })
+      if (method === 'download') return downloadFile()
+
+      let shared: Promise<void>
+      try {
+        shared = share.share(data)
+      } catch (error) {
+        shared = Promise.reject(error)
+      }
+      sharing = true
+      const generation = exportGeneration
+      set({ export: { kind: 'sharing', fileName } })
+
+      return shared.then(
+        () => {
+          sharing = false
+          if (generation === exportGeneration) set({ export: { kind: 'shared', fileName } })
+          return true
+        },
+        (error: unknown) => {
+          sharing = false
+          if (isShareCancelled(error)) {
+            // The user closed the sheet: their choice, not a failure.
+            if (generation === exportGeneration) set({ export: { kind: 'idle' } })
+            return false
+          }
+          // A real failure: the Phase 8 download is the fallback, then its failure message.
+          return downloadFile()
+        },
+      )
     },
 
     /** Step 1: show what Reset progress would delete. Nothing changes yet. */
@@ -163,8 +259,25 @@ export function createProgressData({ storage, snapshot, reload, download, now = 
 
     /** Clear a result message (e.g. when leaving the screen). */
     dismiss() {
+      exportGeneration += 1
       set({ export: { kind: 'idle' }, reset: state.reset.kind === 'confirming' ? state.reset : { kind: 'idle' } })
     },
+  }
+}
+
+/**
+ * The real Web Share API (Step 8). `canShare` is false when `navigator.share` or
+ * `navigator.canShare` is missing, so those browsers download.
+ */
+export function browserFileShare(isStandalone: () => boolean): FileShare {
+  return {
+    isStandalone,
+    canShare: (data) =>
+      typeof navigator !== 'undefined' &&
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare(data),
+    share: (data) => navigator.share(data),
   }
 }
 

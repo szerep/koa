@@ -1,5 +1,15 @@
 .home {
-  --stage: clamp(240px, min(86vw, 44dvh), 380px);
+  /*
+   * The stage also shrinks with the viewport height, so Start always clears the bottom nav
+   * (Phase 9 Step 9; at 375x667 it used to sit under it). 440px is everything below, above and
+   * around the stage in this column: the top bar, the mode chips, the gaps, the timer, Start
+   * and the nav's reserved space, plus about 20px of clearance. Safe areas count too.
+   */
+  --stage: clamp(
+    200px,
+    min(86vw, 44dvh, 100dvh - 440px - var(--safe-top) - var(--safe-bottom)),
+    380px
+  );
   display: grid;
   justify-items: center;
   align-content: center;
@@ -93,5 +103,46 @@
 
   .home__timer .timer-display {
     font-size: 5.5rem;
+  }
+}
+
+/*
+ * Phones in landscape (Phase 9 Step 9): the nav moves to the side rail, so Home uses the wide
+ * two-column layout with a stage sized from the short height, and Start is on screen without
+ * scrolling. Tighter rows; the stage also shrinks on narrow landscape phones (iPhone SE).
+ */
+@media (orientation: landscape) and (max-height: 500px) {
+  .home {
+    --stage: clamp(
+      180px,
+      min(100dvh - 140px - var(--safe-top) - var(--safe-bottom), 100vw - 460px),
+      300px
+    );
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      'stage modes'
+      'stage timer'
+      'stage controls';
+    align-content: center;
+    align-items: center;
+    column-gap: var(--space-5);
+    row-gap: var(--space-3);
+  }
+
+  .home__modes {
+    align-self: end;
+  }
+
+  .home__controls {
+    align-self: start;
+  }
+
+  .home__stage {
+    margin-block: 0;
+  }
+
+  .home__timer .timer-display {
+    font-size: clamp(3.5rem, 8dvh, var(--text-timer));
   }
 }

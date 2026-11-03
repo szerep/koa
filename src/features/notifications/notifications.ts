@@ -4,7 +4,9 @@
  * `enable()`, which the Settings switch calls on a tap; nothing asks on launch. Every failure
  * is caught: a refused or broken notification never affects the timer or rewards.
  */
+import { notificationWorkerTimeoutMs } from '../../config/notifications'
 import type { SessionNotification } from '../../core/timer/notification'
+import { createShowNotification } from './showNotification'
 
 export type PermissionState = 'default' | 'granted' | 'denied'
 
@@ -186,6 +188,11 @@ function isAppleMobile(): boolean {
   return /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
 }
 
+/** Android: Chrome there only shows notifications through a service worker. */
+function isAndroid(): boolean {
+  return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+}
+
 /** The real browser environment. Unsupported outside a secure context or without the API. */
 export function browserNotificationEnv(): NotificationEnv {
   const supported = typeof window !== 'undefined' && window.isSecureContext && 'Notification' in window
@@ -201,20 +208,20 @@ export function browserNotificationEnv(): NotificationEnv {
         result?.then(resolve, reject)
       }),
 
-    async show({ title, body, tag }) {
-      const options: NotificationOptions = { body, tag, lang: 'en' }
-      // With a service worker (Phase 9) this is the only way that works on Android and iOS.
-      const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined
-      if (registration) {
-        await registration.showNotification(title, options)
-        return
-      }
-      const notification = new Notification(title, options)
-      notification.onclick = () => {
-        window.focus()
-        notification.close()
-      }
-    },
+    // Phase 9 Step 7: the active service worker when there is one (Android and iPhone need it);
+    // the constructor only on desktop. See showNotification.ts.
+    show: createShowNotification({
+      serviceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
+      constructorAllowed: !isAppleMobile() && !isAndroid(),
+      construct(title, options) {
+        const notification = new Notification(title, options)
+        notification.onclick = () => {
+          window.focus()
+          notification.close()
+        }
+      },
+      timeoutMs: notificationWorkerTimeoutMs,
+    }),
 
     isAttentive: () => document.visibilityState === 'visible' && document.hasFocus(),
 

@@ -10,6 +10,21 @@
     calc(var(--safe-left) + var(--gutter));
 }
 
+/*
+ * Whatever gets focus (the skip confirmation's Keep button, keyboard focus anywhere) is scrolled
+ * clear of the floating bottom nav, not just into the viewport (Phase 9 Step 9). Not needed where
+ * the nav is a side rail.
+ */
+html {
+  scroll-padding-bottom: calc(var(--safe-bottom) + var(--nav-height) + var(--space-5));
+}
+
+@media (min-width: 960px), (orientation: landscape) and (max-height: 500px) {
+  html {
+    scroll-padding-bottom: 0;
+  }
+}
+
 .app__bar {
   display: flex;
   align-items: center;
@@ -60,6 +75,17 @@
       calc(var(--safe-right) + var(--gutter))
       calc(var(--safe-bottom) + var(--space-5))
       calc(var(--safe-left) + 136px);
+  }
+}
+
+/* Phones in landscape: room on the left for the nav rail (bottom-nav.css), none below. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app {
+    padding:
+      calc(var(--safe-top) + var(--space-2))
+      calc(var(--safe-right) + var(--gutter))
+      calc(var(--safe-bottom) + var(--space-3))
+      calc(var(--safe-left) + 104px);
   }
 }
 

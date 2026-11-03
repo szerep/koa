@@ -1,15 +1,15 @@
-// Post-build check for the shipped bundle (Phase 9, Steps 1-5).
+// Post-build check for the shipped bundle (Phase 9, Steps 1-5 and 9).
 // Runs after `vite build` (see the "build" script in package.json) and fails the build when
 // `dist/` contains something that must never ship, the service worker's precache isn't
-// exactly what Koa needs offline, or the iOS startup images don't match index.html. Plain Node,
-// no dependencies.
+// exactly what Koa needs offline, the iOS startup images don't match index.html, or the
+// performance budget (BUDGET) is exceeded. Plain Node, no dependencies.
 //
 //   node scripts/check-build.mjs [distDir]     (distDir defaults to ./dist)
 //
 // With KOA_SW_KILL_SWITCH=1 (the emergency kill switch build, Step 4) sw.js must instead be the
 // plugin's self-destroying worker, and the check says so loudly.
 //
-// The rules live in `checkFiles`, `checkPrecache` and `checkSplash`, pure functions tested in
+// The rules live in `checkFiles`, `checkPrecache`, `checkSplash` and `checkBudget`, pure functions tested in
 // check-build.test.ts.
 // Sizes use decimal units (1 kB = 1000 bytes), like Vite's build output.
 
@@ -23,6 +23,23 @@ export const LIMITS = {
   characterFrameBytes: 150_000,
   /** Any PNG anywhere in dist/ (app icons excepted: they have their own limits below). */
   pngBytes: 300_000,
+}
+
+/**
+ * The performance budget (Phase 9 Step 9, decision D12), enforced on every build. Gzip sizes are
+ * this script's own zlib figures (they differ slightly from Vite's output).
+ */
+export const BUDGET = {
+  /**
+   * The JS index.html loads before Koa can render: its module scripts and modulepreloads. Chunks
+   * loaded later (workbox-window, after registration) and sw.js (the worker's own thread) are
+   * reported separately and not part of this row.
+   */
+  entryJsGzipBytes: 160_000,
+  /** Every CSS file in the build. */
+  cssGzipBytes: 12_000,
+  /** The service worker's precache, raw bytes (not in a kill switch build, which has none). */
+  precacheBytes: 1_200_000,
 }
 
 /**
@@ -343,6 +360,47 @@ export function checkSplash({ html, splash, precached }) {
   return { errors, bytes, count: splash.length }
 }
 
+/**
+ * The JS files index.html loads up front: `<script type="module" src>` and
+ * `<link rel="modulepreload" href>`, as paths relative to dist/.
+ * @param {string} html
+ * @returns {string[]}
+ */
+export function entryScripts(html) {
+  const tags = html.match(/<(script|link)\b[^>]*>/gi) ?? []
+  const attr = (tag, name) => tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, 'i'))?.[1] ?? null
+  const paths = []
+  for (const tag of tags) {
+    const isScript = /^<script\b/i.test(tag)
+    const url = isScript
+      ? attr(tag, 'type') === 'module' ? attr(tag, 'src') : null
+      : attr(tag, 'rel') === 'modulepreload' ? attr(tag, 'href') : null
+    if (url && !/^[a-z]+:\/\//i.test(url) && !url.startsWith('//')) paths.push(url.replace(/^\//, ''))
+  }
+  return [...new Set(paths)]
+}
+
+/**
+ * Checks the measured sizes against BUDGET.
+ * @param {{ entryJs: string[], entryJsGzip: number, cssGzip: number, precacheBytes: number | null }} input
+ *   entryJs = from `entryScripts`; precacheBytes is null in a kill switch build
+ * @returns {string[]} the errors
+ */
+export function checkBudget({ entryJs, entryJsGzip, cssGzip, precacheBytes }) {
+  const errors = []
+  if (entryJs.length === 0) errors.push('index.html: no module script found (entry JS budget)')
+  if (entryJsGzip > BUDGET.entryJsGzipBytes) {
+    errors.push(`budget: entry JS is ${kB(entryJsGzip)} gzip, limit ${kB(BUDGET.entryJsGzipBytes)}`)
+  }
+  if (cssGzip > BUDGET.cssGzipBytes) {
+    errors.push(`budget: CSS is ${kB(cssGzip)} gzip, limit ${kB(BUDGET.cssGzipBytes)}`)
+  }
+  if (precacheBytes !== null && precacheBytes > BUDGET.precacheBytes) {
+    errors.push(`budget: precache is ${kB(precacheBytes)}, limit ${kB(BUDGET.precacheBytes)}`)
+  }
+  return errors
+}
+
 export function kB(bytes) {
   return `${(bytes / 1000).toFixed(1)} kB`
 }
@@ -393,18 +451,28 @@ function main(argv) {
   errors.push(...splash.errors)
 
   const total = files.reduce((sum, f) => sum + f.bytes, 0)
-  const gz = (ext) =>
-    files
-      .filter((f) => f.path.endsWith(ext))
-      .reduce((sum, f) => sum + gzipSync(readFileSync(f.full)).length, 0)
+  const gzipOf = (list) => list.reduce((sum, f) => sum + gzipSync(readFileSync(f.full)).length, 0)
+  const js = files.filter((f) => f.path.endsWith('.js'))
+  const entryJs = indexFile ? entryScripts(readFileSync(indexFile.full, 'utf8')) : []
+  const entryFiles = js.filter((f) => entryJs.includes(f.path))
+  for (const path of entryJs) {
+    if (!entryFiles.some((f) => f.path === path)) errors.push(`index.html: entry script ${path} is not in the build`)
+  }
+  const entryJsGzip = gzipOf(entryFiles)
+  const workerGzip = gzipOf(js.filter((f) => f.path === 'sw.js'))
+  const laterGzip = gzipOf(js.filter((f) => f.path !== 'sw.js' && !entryJs.includes(f.path)))
+  const cssGzip = gzipOf(files.filter((f) => f.path.endsWith('.css')))
+  errors.push(...checkBudget({ entryJs, entryJsGzip, cssGzip, precacheBytes: killSwitch ? null : precache.bytes }))
 
+  const of = (limit) => `(budget ${kB(limit)})`
   console.log(`check-build: ${files.length} files, ${kB(total)} total`)
-  console.log(`  JS  gzip ${kB(gz('.js'))}`)
-  console.log(`  CSS gzip ${kB(gz('.css'))}`)
+  console.log(`  JS  gzip ${kB(entryJsGzip + laterGzip + workerGzip)} in all:`)
+  console.log(`    entry ${kB(entryJsGzip)} ${of(BUDGET.entryJsGzipBytes)}, loaded later ${kB(laterGzip)}, sw.js ${kB(workerGzip)}`)
+  console.log(`  CSS gzip ${kB(cssGzip)} ${of(BUDGET.cssGzipBytes)}`)
   if (killSwitch) {
     console.warn('check-build: KILL SWITCH build. sw.js unregisters itself and deletes all Koa caches (no offline support).')
   } else {
-    console.log(`  precache ${urls?.length ?? 0} entries, ${kB(precache.bytes)}`)
+    console.log(`  precache ${urls?.length ?? 0} entries, ${kB(precache.bytes)} ${of(BUDGET.precacheBytes)}`)
   }
   console.log(`  splash ${splash.count} startup images, ${kB(splash.bytes)} (not precached)`)
   for (const img of images.filter((i) => !i.path.startsWith('splash/'))) {

@@ -14,6 +14,10 @@ function exportMessage(status: ExportStatus): string {
       return 'Download everything Koa keeps on this device as a JSON file.'
     case 'exported':
       return `Your download should start now: ${status.fileName}.`
+    case 'sharing':
+      return `Choose where to save or send ${status.fileName}.`
+    case 'shared':
+      return `Done. ${status.fileName} is on its way.`
     case 'failed':
       return "Koa couldn't create the file. Check that downloads are allowed for this site, then try again."
   }

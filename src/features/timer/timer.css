@@ -40,6 +40,12 @@
   gap: var(--space-5);
   padding-top: var(--space-1); /* room for the primary button's raised base */
 }
+
+@media (max-width: 359px) {
+  .timer-controls {
+    gap: var(--space-2);
+  }
+}
 .skip-confirm {
   display: grid;
   justify-items: center;

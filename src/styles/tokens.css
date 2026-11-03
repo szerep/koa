@@ -124,3 +124,10 @@
     --gutter: 32px;
   }
 }
+
+/* Very narrow viewports (page zoom on a phone): the mode chips and timer controls still fit. */
+@media (max-width: 359px) {
+  :root {
+    --gutter: 12px;
+  }
+}

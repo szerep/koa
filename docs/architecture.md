@@ -1,6 +1,6 @@
 # Koa — Architecture
 
-*As built through Phase 8 (settings, stats, keep screen on, notifications, sounds, export and reset) and Phase 9 Steps 1–6 (offline service worker, update flow, app icons, iOS splash screens, install help). Planned parts are marked **(planned)**; the rest of Phase 9 is in `docs/phase-9/pwa-plan.md`.*
+*As built through Phase 8 (settings, stats, keep screen on, notifications, sounds, export and reset) and Phase 9 Steps 1–9 (offline service worker, update flow, app icons, iOS splash screens, install help, notifications through the worker, export through the share sheet, mobile layout and the performance budget). Planned parts are marked **(planned)**; Step 10 (deployment and device verification) is in `docs/phase-9/pwa-plan.md`.*
 
 ## Principles
 
@@ -40,6 +40,7 @@ src/
     data/data.ts            # export envelope, file name, reset state, reset summary, isProgressReset
     pwa/update.ts           # shouldOfferUpdate (never during running focus), isUpdateCheckDue (hourly, online)
     pwa/install.ts          # installHelp (what the install card shows), detectInstallBrowser
+    pwa/notificationClick.ts # pickClient, focusOrOpenKoa (what a notification tap does, used by src/sw.ts)
     time.ts                 # local-day keys, calendar-day arithmetic (DST-safe)
   features/                 # React-facing stores, hooks and components per domain
     timer/                  # timerStore, store (singleton), useTimer, TimerFace, format
@@ -72,7 +73,8 @@ public/
   splash/                   # 30 iOS startup images (scripts/art/make_splash.py), not precached
 scripts/
   check-build.mjs           # post-build check (run by pnpm build): no reference art, image limits, exact precache,
-                            # splash images match index.html, kill-switch worker only with KOA_SW_KILL_SWITCH=1
+                            # splash images match index.html, kill-switch worker only with KOA_SW_KILL_SWITCH=1,
+                            # performance budget (entry JS, CSS, precache)
   app-version.ts            # __APP_VERSION__ for Settings (Cloudflare commit, else git, else package version)
   art/                      # normalize_export.py, make_blink.py, make_icons.py, make_splash.py (Pillow)
 art/reference/              # the design sheet (never shipped)
@@ -172,7 +174,8 @@ interface Wallet {
 - **Notifier** (`notifications.ts`): the browser API comes in as `NotificationEnv` (real: `browserNotificationEnv()`). It shows a notification only if the setting is on, the permission is `granted` and the user isn't looking (page hidden or window unfocused). It uses the service worker registration when there is one, else `new Notification`. Statuses: `unsupported`, `default`, `requesting`, `dismissed`, `denied`, `granted`, `failed`; re-read on focus, visibility and the Permissions API `change` event.
 - **Permission** is requested only by `enable()`, called from the Settings switch tap. Launch, completions and Reset progress never ask.
 - **Binding** (`bindNotifications.ts`): a timer event listener that catches everything, so a failing notification can't stop the wallet's listener or the save.
-- **Since Phase 9 Step 3** production builds have a service worker, so notifications go through `registration.showNotification`. The worker has no `notificationclick` handler until Step 7, so clicking a notification doesn't focus Koa yet.
+- **Delivery (Phase 9 Step 7, `showNotification.ts`):** through the *active* service worker registration (`navigator.serviceWorker.ready`, 3 s timeout; no wait when nothing is registered), with `icon`, `badge` (Android) and `data: { url: '/' }`. `new Notification` only without an active worker and only on desktop (never Android or iPhone/iPad); otherwise the show rejects (status `failed`).
+- **Click (`src/sw.ts`, `core/pwa/notificationClick.ts`):** `notificationclick` closes the notification and focuses an open Koa window (`pickClient`: a focused one first, then the most recently focused; other sites never), without navigating; if none is open, or focusing is refused, it opens `data.url` (only inside Koa's scope, else `/`).
 
 ## Sounds (`src/features/sounds/`, Phase 8)
 
@@ -184,7 +187,7 @@ interface Wallet {
 ## Export and reset (`src/features/data/`, Phase 8)
 
 - **Rules** (`core/data/data.ts`): `buildExport` wraps the `koa:v1` structure in `{ format: "koa-export", exportVersion: 1, exportedAt, storageKey, data }`; `progressResetState(settings)` is `{ version: 1, settings }`; `progressSummary` feeds the confirmation; `isProgressReset(oldValue, newValue)` detects another tab's reset (the progress slices were dropped).
-- **Controller** (`progressData.ts`): storage, a snapshot of the stores and the download are injected. Export is built from the stores' in-memory state and downloaded through a Blob link. Reset is `requestReset()` then `confirmReset()`: write and read back the backup (`koa:backup:reset`), then write and read back the settings-only save, then reload. If either write fails, nothing is deleted.
+- **Controller** (`progressData.ts`): storage, a snapshot of the stores, the download and (Phase 9 Step 8) the share sheet (`FileShare`) are injected. Export is built from the stores' in-memory state. In an installed app that can share the file (`exportMethod` in `core/data/exportMethod.ts`: standalone and `canShare({ files })`), the Export tap calls `navigator.share` with a JSON `File` synchronously; closing the sheet (`AbortError`) is quiet and other failures fall back to the download. Everywhere else it's downloaded through a Blob link, as in Phase 8. Reset is `requestReset()` then `confirmReset()`: write and read back the backup (`koa:backup:reset`), then write and read back the settings-only save, then reload. If either write fails, nothing is deleted.
 - **`reloadProgress()`** (`store.ts`): `timerStore.reload()` (drops the session without events, so it can't pay, notify or chime), `walletStore.refresh()`, `wardrobeStore.refresh()`, `sounds.cancelPending()`, `wakeLock.update()` and `koalaStore.reset()`. Settings and the notification permission are untouched.
 - **Other tabs:** the `storage` listener in `connect.ts` runs `reloadProgress()` when `isProgressReset` is true, before the usual refreshes.
 - **No import** (out of scope).
@@ -203,7 +206,7 @@ interface Wallet {
 - Rules are in the character bible §4.
 - **Accessories:** `accessoryArt` in `manifest.ts`, canvas-aligned frames (see character bible §5). It's **empty: no accessory artwork exists yet.**
 
-## PWA and offline (`src/features/pwa/`, `src/sw.ts`, Phase 9 Steps 1–6)
+## PWA and offline (`src/features/pwa/`, `src/sw.ts`, Phase 9 Steps 1–9)
 
 - **Manifest and worker** (`vite.config.ts`): `vite-plugin-pwa` with `injectManifest`, `registerType: 'prompt'`, no injected register script, `devOptions` off (`pnpm dev` never has a worker). Manifest: `id`, `start_url` and `scope` `/`, `display: standalone`, cream background and theme color, icons 192, 512 and maskable 512.
 - **Service worker** (`src/sw.ts`): precaches exactly 18 entries (shell, manifest, favicon, JS, CSS, 8 font files, the 4 Koa frames; about 965 kB), cache prefix `koa`, cleans outdated caches, serves the precached `index.html` for navigations, and handles only the `SKIP_WAITING` message. It never touches app data. Icons and splash images aren't precached (the OS fetches them at install).
@@ -213,7 +216,7 @@ interface Wallet {
 - **App version:** `__APP_VERSION__` (`scripts/app-version.ts`) is shown as a caption in Settings.
 - **Install help** (`installStore.ts`, `displayMode.ts`, rules in `core/pwa/install.ts`, card `app/screens/InstallCard.tsx`): hidden when `isStandalone()` or where installing isn't possible. Chromium: the captured `beforeinstallprompt` (banner suppressed) is opened only by the Install tap and used once. iPhone/iPad: Share → Add to Home Screen steps and the separate-data note. Other browsers: their menu command. Listening starts in `connect.ts` before render.
 - **iOS:** `apple-touch-icon` and 30 `apple-touch-startup-image` links in `index.html` (exact device size, pixel ratio and orientation), `apple-mobile-web-app-capable`, status bar style `default`, `viewport-fit=cover` with the safe-area tokens (`--safe-*`). Pinch zoom stays allowed. The installed iPhone app has its own storage, separate from Safari (decision D10, no import).
-- **Build check** (`scripts/check-build.mjs`): fails the build on reference art in `dist/`, oversized character frames, icons or splash images, a precache that isn't exactly the expected list, splash images that don't match their `<link>` media queries, or a kill-switch worker in a normal build.
+- **Build check** (`scripts/check-build.mjs`): fails the build on reference art in `dist/`, oversized character frames, icons or splash images, a precache that isn't exactly the expected list, splash images that don't match their `<link>` media queries, a kill-switch worker in a normal build, or a size over the performance budget (Phase 9 Step 9, `BUDGET`: entry JS — the module scripts of `index.html` — ≤ 160 kB gzip, all CSS ≤ 12 kB gzip, precache ≤ 1.2 MB). It reports the entry JS, later-loaded chunks and `sw.js` separately.
 - **Hosting (planned, Step 10):** Cloudflare Pages (Free plan) with GitHub integration, `pnpm build` → `dist`, Node 24 and pnpm 12.14.0 pinned, `public/_headers` with `no-cache` for `sw.js`, `index.html` and the manifest, and immutable `/assets/*`. Not connected yet.
 
 ## Dependencies

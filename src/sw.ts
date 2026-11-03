@@ -11,11 +11,13 @@
  *   every Koa window is closed, or when the page posts `SKIP_WAITING` (the update prompt, Step 4).
  * - Never touches app data: no LocalStorage (not available here), no IndexedDB.
  *
- * `notificationclick` comes in Step 7.
+ * - Tapping a session notification (Step 7) closes it and focuses an open Koa window, or opens
+ *   Koa if none is open (`src/core/pwa/notificationClick.ts`).
  */
 import { setCacheNameDetails } from 'workbox-core'
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute, type PrecacheEntry } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { focusOrOpenKoa } from './core/pwa/notificationClick'
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: (PrecacheEntry | string)[] }
 
@@ -32,4 +34,10 @@ self.addEventListener('message', (event) => {
   if (typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'SKIP_WAITING') {
     void self.skipWaiting()
   }
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  // waitUntil keeps the worker alive and lets the browser allow focus()/openWindow() for this tap.
+  event.waitUntil(focusOrOpenKoa(self.clients, self.registration.scope, event.notification.data))
 })

@@ -4,7 +4,7 @@ Koa is a cozy Pomodoro timer with a koala companion. Focus sessions earn **Coins
 
 It's built as a web app for **iPhone first** (it also works on iPad and desktop browsers). It installs as an app (Add to Home Screen on iPhone and iPad, Install in Chrome and Edge) and works offline after the first visit.
 
-> **Status:** early development. Phases 1–8 of 10 are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–6 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help), and Step 7 (notifications through the service worker) is next. Koa isn't deployed yet. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
+> **Status:** early development. Phases 1–8 of 10 are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10, the first deployment and the checks on real devices (including the Lighthouse scores), is next. Koa isn't deployed yet. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
 
 ## Features
 
@@ -68,14 +68,14 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 - **Accessory artwork is not implemented yet.** You can buy and wear items, and your outfit is saved, but Koa can't show accessories until their artwork is made. Shop cards show a color swatch and "Artwork coming soon" instead. Nothing is drawn as a stand-in. The required files are listed in [`docs/phase-6/accessory-assets.md`](docs/phase-6/accessory-assets.md).
 - Koa currently has a single pose (sitting idle, plus a blink frame). Personality is expressed through gentle movement of that pose and its blink frame; study, rest, celebrate and other poses come with a later art pass.
 - The current Koa artwork is a **provisional** master with known proportion deviations from the design sheet.
-- **Notifications on iPhone and iPad** work only in the installed Home Screen app (iOS 16.4 or later), and even there nothing arrives while the phone is locked or Koa is in the background, because Koa has no push server. Desktop background tabs can delay a notification or chime by up to about a minute. Notifications now go through the service worker, but clicking one doesn't bring Koa to the front until Phase 9 Step 7.
+- **Notifications on iPhone and iPad** work only in the installed Home Screen app (iOS 16.4 or later), and even there nothing arrives while the phone is locked or Koa is in the background, because Koa has no push server. Desktop background tabs can delay a notification or chime by up to about a minute. Notifications go through the service worker; tapping one brings an open Koa window to the front, or opens Koa.
 - **Sounds** need a tap after each reload and don't play while the page is suspended. The iPhone silent switch may mute them.
-- **Export** uses a regular download. Installed Home Screen apps on iOS may not handle it (the share sheet comes in Phase 9 Step 8), and a download the browser blocks silently can't be detected. The reset backup lives in the same browser storage, so clearing site data removes it too; export first if you want your own copy.
+- **Export** uses a regular download in the browser. In an installed app that can share files (for example a Home Screen app on iPhone) it opens the share sheet instead, where you can pick Save to Files; a real iPhone check is in Phase 9 Step 10. A download the browser blocks silently can't be detected. The reset backup lives in the same browser storage, so clearing site data removes it too; export first if you want your own copy.
 - **The installed iPhone app keeps its own data**, separate from Safari's, so it may start with 0 coins. There's no import.
 - **The first launch needs the network**, on every platform, before Koa works offline. iOS has no install prompt, so installing there is always Share → Add to Home Screen.
 - **iOS splash screens** cover current iPhones (portrait) and iPads (portrait and landscape). Other devices show a plain launch screen.
-- **Small phones and phone landscape:** on a 375×667 screen (iPhone SE) the Start button sits partly under the navigation until you scroll, and in landscape Home needs scrolling. This is planned for Phase 9 Step 9.
-- Physical-device checks (iPhone, iPad, Android) haven't been done yet; they're part of Phase 9 Step 10, together with the first deployment.
+- **Small phones and page zoom:** in a Safari tab on an iPhone SE (with the toolbars showing) Home needs a short scroll before Start; the installed app doesn't. In phone landscape the navigation moves to a rail on the left. Page zoom down to a 320 px wide layout works; a phone at 200% page zoom (about 195 px) scrolls sideways.
+- **Not verified yet** (Phase 9 Step 10, together with the first deployment): physical-device checks on iPhone, iPad and Android, including landscape safe areas around the notch, sharing a file from the installed iPhone app, and tapping a notification (Android testing hasn't started). The Lighthouse Performance, Accessibility and Best Practices scores haven't been measured yet.
 - Data lives only in this browser. There are no accounts or sync.
 
 ## Roadmap
@@ -146,7 +146,7 @@ public/icons/        App icons and the notification badge (generated)
 public/splash/       iOS splash screens (generated)
 art/                 Character art sources: approved Master, candidates, the reference design sheet (art/reference/, never shipped)
 scripts/art/         Art pipeline: normalization/export, blink frame, app icons, splash screens
-scripts/check-build.mjs  Post-build check: no reference art, image size limits, the exact offline precache, splash links
+scripts/check-build.mjs  Post-build check: no reference art, image size limits, the exact offline precache, splash links, the performance budget
 docs/                Design brief, character bible, architecture, roadmap, phase plans
 ```
 

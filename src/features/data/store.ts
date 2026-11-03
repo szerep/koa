@@ -7,7 +7,8 @@ import { wardrobeStore } from '../shop/store'
 import { sounds } from '../sounds/store'
 import { timerStore } from '../timer/store'
 import { wakeLock } from '../wakeLock/store'
-import { browserDownload, createProgressData } from './progressData'
+import { browserDisplayModeEnv, isStandalone } from '../pwa/displayMode'
+import { browserDownload, browserFileShare, createProgressData } from './progressData'
 
 /**
  * After Reset progress (in this tab or another): every store re-reads the save, so nothing from
@@ -34,4 +35,5 @@ export const progressData = createProgressData({
   }),
   reload: reloadProgress,
   download: browserDownload,
+  share: browserFileShare(() => isStandalone(browserDisplayModeEnv())),
 })

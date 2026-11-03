@@ -1,6 +1,6 @@
 # Phase 9 — PWA and mobile optimization plan
 
-**Status:** plan approved (2026-11-03), with the decisions in section 8. **Steps 1–3 approved (2026-11-03; the icons provisionally, their composition may be revisited in a polish pass; Step 3 including the direct `workbox-window` dev dependency). Steps 4–6 approved (2026-11-03); Steps 1–6 are committed together. Next: Step 7 (notifications through the service worker); Steps 7–10 not started.** Each step below is implemented, verified and documented on its own, then waits for explicit approval, like Phase 8.
+**Status:** plan approved (2026-11-03), with the decisions in section 8. **Steps 1–3 approved (2026-11-03; the icons provisionally, their composition may be revisited in a polish pass; Step 3 including the direct `workbox-window` dev dependency). Steps 4–6 approved (2026-11-03); Steps 1–6 are committed together. Steps 7 (notifications through the service worker) and 8 (export through the share sheet) approved 2026-11-04. Step 9 (mobile optimization and the performance budget) approved 2026-11-04 with one open item: the Lighthouse rows are not measured yet and move to Step 10. Steps 7–9 committed together 2026-11-04. Step 10 is next, not started.** Each step below is implemented, verified and documented on its own, then waits for explicit approval, like Phase 8.
 
 ## 1. Goals and scope
 
@@ -32,8 +32,8 @@
 | Fonts | Fontsource variable fonts, bundled by Vite as hashed `woff2` (8 subsets, about 150 KB) | Precache them |
 | Character art | 4 WebP frames in `public/characters/` (about 290 KB together), `srcset` 512/1024 | Precache them |
 | Reference sheet | `public/characters/reference/koala-design-sheet.png`, **2.0 MB, currently copied into `dist/`** | Move out of `public/` (Step 1) |
-| Notifications | `browserNotificationEnv().show()` already prefers `navigator.serviceWorker.getRegistration()` and falls back to `new Notification` | Add the service worker side (`notificationclick`), use the *active* registration (Step 7) |
-| Export | `browserDownload` (Blob + `<a download>`), injected into `createProgressData` as `download` | Add a share path for installed iOS apps (Step 8) |
+| Notifications | `browserNotificationEnv().show()` already prefers `navigator.serviceWorker.getRegistration()` and falls back to `new Notification` | Add the service worker side (`notificationclick`), use the *active* registration (Step 7, done) |
+| Export | `browserDownload` (Blob + `<a download>`), injected into `createProgressData` as `download` | Add a share path for installed apps (Step 8, done) |
 | Persistence | One LocalStorage key `koa:v1`, validated slices, `koa:backup`, `koa:backup:reset` | **No change.** The service worker never touches app data |
 | Build (2026-11-03) | One JS bundle 460 KB (146 KB gzip), CSS 32 KB (7.3 KB gzip), no dynamic imports, `dist/` 3.0 MB of which 2.0 MB is the reference sheet | Baseline for the budget (Step 9) |
 
@@ -409,7 +409,7 @@ Ten steps. Steps 1–2 need no new dependency. Every step ends with `pnpm test`,
 
 **Results:** `pnpm test` 523 tests in 30 files, `pnpm lint` and `pnpm build` pass (`check-build: OK`, precache 18 entries, 951.6 kB). Entry JS 467.5 kB raw, 148.5 kB gzip (Step 3: 464.1 kB raw).
 
-**Known for Step 9:** on 375×667 (iPhone SE), Home's Start button already sits partly under the bottom nav **without** the update card (Start 550–610, nav 587–655, measured before this step). The page scrolls, so it's reachable; it belongs in Step 9's mobile review. The card makes that overlap larger.
+**Known for Step 9 (fixed there):** on 375×667 (iPhone SE), Home's Start button already sits partly under the bottom nav **without** the update card (Start 550–610, nav 587–655, measured before this step). The page scrolls, so it's reachable; it belongs in Step 9's mobile review. The card makes that overlap larger.
 
 #### Kill switch (emergency recovery)
 
@@ -563,7 +563,7 @@ That one automatic reload comes from the plugin and is the deliberate exception 
 - Safe areas simulated by overriding the `--safe-*` tokens with device insets: 390×844 (47 top, 34 bottom), 844×390 (47 left and right, 21 bottom), 375×667 (20 top), 820×1180 (24 top, 20 bottom), 1440×900 (none). On all four tabs at each size: the top bar and nav stay outside the insets, no button, link, switch or heading starts inside them, and there's no horizontal scroll.
 - Standalone: iPhone contexts with `navigator.standalone`, iPad and desktop with `(display-mode: standalone)` mocked through `matchMedia`, because Chromium's CDP can't emulate `display-mode`. The install card is hidden in every standalone run and shown in the browser.
 - Install row: desktop Chromium shows the menu wording until a `beforeinstallprompt` arrives. A dispatched event was `defaultPrevented` and `prompt()` wasn't called until the tap. Install opened it once; dismissed → menu wording; a new event plus accept → "Koa is installed". iPhone user agent without the Notification API (like iOS Safari): the steps, and "How to add Koa" focuses the card heading with the hash still `#/settings`.
-- **Not fixed here (Step 9, mobile optimization):** on 375×667, Start sits partly under the nav (known since Step 4). In 844×390 landscape, Home is tall and the floating nav covers part of Koa until you scroll. Start is reachable and tappable when scrolled, and nothing sits under the notch or home indicator.
+- **Not fixed here (fixed in Step 9, see there):** on 375×667, Start sits partly under the nav (known since Step 4). In 844×390 landscape, Home is tall and the floating nav covers part of Koa until you scroll. Start is reachable and tappable when scrolled, and nothing sits under the notch or home indicator.
 
 **Tests:** 28 new (`install.test.ts` 12, `displayMode.test.ts` 4, `installStore.test.ts` 12): every install state per platform, browser detection from real user agents, every standalone display mode, the prompt never called without a tap, used once, a second tap ignored, dismissal, a stale event, `appinstalled`, becoming standalone, unsupported envs and a broken listener. `pnpm test` 564 tests in 33 files; lint and build pass.
 
@@ -598,6 +598,33 @@ That one automatic reload comes from the plugin and is the deliberate exception 
 - Still no push: nothing arrives while the page is frozen or closed, on any platform. iPhone: nothing while suspended or locked.
 - Android may freeze a backgrounded Chrome page within minutes; then the completion is noticed only on return and, if more than 5 minutes late, isn't announced (approved behavior).
 
+#### Implementation details (Step 7, approved 2026-11-04)
+
+- **Delivery** (`src/features/notifications/showNotification.ts`, injected deps, used by `browserNotificationEnv().show()`):
+  1. `navigator.serviceWorker.getRegistration()`: if there is no registration (`pnpm dev`, or registration failed), Koa doesn't wait, because `ready` would never settle.
+  2. Otherwise it waits for `navigator.serviceWorker.ready` (the **active** registration), up to `notificationWorkerTimeoutMs` (3 s, `src/config/notifications.ts`), then calls `registration.showNotification`. The timeout is always cleared.
+  3. Without an active worker, `new Notification` is used **only on desktop**. It's never used on Android (Chrome throws "Illegal constructor") or iPhone/iPad (the API exists only in the Home Screen app, which always has the worker). There the promise rejects and the notifier reports `failed`, as before.
+  4. A registration that refuses to show rejects too; there's no constructor fallback once a worker is active.
+- **Options** (`notificationOptions`): `body`, `tag` = session id (unchanged), `lang: 'en'`, `icon: '/icons/icon-192.png'`, `badge: '/icons/badge-96.png'` (the leaf mark, Android status bar) and `data: { url: '/' }`. The paths are in `notificationAssets` (`src/config/notifications.ts`). The icons aren't precached, so offline the browser may show the notification without them.
+- **Click** (`src/sw.ts` + `src/core/pwa/notificationClick.ts`): `notificationclick` closes the notification, then inside `event.waitUntil` runs `focusOrOpenKoa(self.clients, self.registration.scope, data)`:
+  - `clients.matchAll({ type: 'window', includeUncontrolled: true })`, so a tab the worker doesn't control yet (first visit, just after an update) still counts.
+  - `pickClient`: only Koa windows (same origin, inside the scope, any hash tab); a focused one first, then the first in the browser's order (most recently focused). Other sites are never picked.
+  - **Koa already open:** that window is focused. No navigation and no reload, so the timer, the tab and anything on screen stay as they are. With two Koa tabs only one is focused; nothing is opened.
+  - **Koa not open:** `clients.openWindow` opens `notificationTargetUrl(data)`: `data.url` resolved against the scope if it stays inside it, else the scope (`/`). A notification can never open another site.
+  - If focusing is refused, Koa is opened instead, so a tap never does nothing.
+  - The helper uses only structural types, so it compiles in both the app and the worker tsconfig.
+- **Unchanged:** permission only from the Settings tap, off by default, quiet while looking, the 5-minute rule, one notification per session id (tag), every failure caught, the Settings copy (iPhone: installed app only, nothing while suspended; Android: nothing new). No timer, rewards, storage or schema change; no new dependency. The kill-switch worker (`selfDestroying`) has no click handler, as before.
+
+**Browser checks** (Playwright Chromium, `pnpm preview`, fresh contexts, 390x844, notification permission granted, `document.hasFocus` mocked to false):
+- A seeded focus session completing in real time, with two Koa tabs open (both controlled): exactly **one** notification in `registration.getNotifications()`, title "Focus session done", tag = the session id, icon `/icons/icon-192.png`, badge `/icons/badge-96.png`, `data` `{ url: '/' }`, `lang` `en`. The wrapped `Notification` constructor was called **0** times in both tabs. The timer moved on to the short break as before.
+- In the worker (`serviceWorker.evaluate`): `clients.matchAll` lists both Koa tabs (`#/shop`, `#/settings`). A synthetic `notificationclick` ran the handler and closed the notification, and no extra window appeared.
+- **Not verifiable here:** a real tap. Playwright can't click a system notification, and `focus()`/`openWindow()` are only allowed for a genuine tap, so the focus and open paths are covered by unit tests and wait for the Android Chrome device check in Step 10.
+
+**Tests:** 25 new (`notificationClick.test.ts` 12: Koa-window matching, `pickClient` order and foreign windows, target URL validation, focus vs open, two tabs, focus refused; `showNotification.test.ts` 13: options, `ready` used, waiting for an activating worker, a clean timeout, the constructor only where allowed, no wait without a registration, failing `getRegistration`, a refusing registration, a throwing constructor, and `failed` then `granted` through the real notifier). The existing Phase 8 notification tests are unchanged and pass. `pnpm test` 589 tests in 35 files; lint and build pass (precache still 18 entries; entry JS 159.3 kB gzip, +0.5 kB over Step 6, still under the 160 kB budget of Step 9).
+
+**Limitations:** no push, so nothing while the page is frozen or closed (Android may freeze a background tab within minutes; a completion noticed more than 5 minutes late isn't announced). A real Android device check is in Step 10. If the worker is still installing on a page's very first visit, a notification can wait up to 3 s.
+
+
 ---
 
 ### Step 8 — Export through the share sheet in installed apps
@@ -622,6 +649,37 @@ That one automatic reload comes from the plugin and is the deliberate exception 
 
 **Risks:** file sharing support varies (iOS 15+, Android Chrome; desktop Safari supports it, desktop Chrome partly). The rule only uses it in standalone mode to keep desktop behavior unchanged.
 
+#### Implementation details (Step 8, approved 2026-11-04)
+
+- **Rule** (`src/core/data/exportMethod.ts`, pure): `exportMethod({ standalone, canShareFiles })` is `'share'` only when both are true, else `'download'`. `isShareCancelled(error)` is true only for a rejection named `AbortError`.
+- **Injected capability** (`FileShare` in `progressData.ts`: `isStandalone()`, `canShare(data)`, `share(data)`), passed to `createProgressData` as the optional `share` next to `download`. Without it, Export always downloads. The browser version (`browserFileShare`, wired in `features/data/store.ts`) uses `isStandalone(browserDisplayModeEnv())` from Step 6; its `canShare` is false when `navigator.share` or `navigator.canShare` is missing.
+- **Export tap** (`exportData()`), in order, all synchronous up to `share()`:
+  1. Build the export text exactly as in Phase 8 (same envelope, same `koa-data-YYYY-MM-DD.json` name). If it can't be built: `failed`, as before.
+  2. Build `new File([text], fileName, { type: 'application/json' })` and `ShareData = { files: [file], title: 'Koa data' }`.
+  3. Check `isStandalone()` and `canShare(data)` for **that exact data**, at tap time. A check that throws counts as "no".
+  4. `download`: the Phase 8 download, unchanged (returns `true`/`false` synchronously, status `exported`/`failed`).
+  5. `share`: `navigator.share(data)` is called right away (no await before it, so the tap's user activation still counts). Status `sharing` ("Choose where to save or send ..."); further Export taps are ignored until the sheet closes, because a second `share()` would reject.
+- **Outcomes** (the returned promise resolves, never rejects):
+  - Shared: status `shared` ("Done. ... is on its way.").
+  - `AbortError` (the user closed the sheet): back to `idle`, no message, no download.
+  - Any other rejection, or `share()` throwing synchronously: the Phase 8 download as a fallback, then its existing failure message if that fails too. In an installed iOS app this fallback may itself not save anything (the reason for this step); it's a best effort.
+  - A sheet that closes after the user left Settings (`dismiss()`) sets no message.
+- **Copy:** the button stays "Export" (the plan's default) and the idle hint is unchanged. Two new hint lines for `sharing` and `shared` in `DataCard.tsx`.
+- **Unchanged:** the export envelope, filename and content; the download path everywhere outside installed apps (desktop and mobile browser tabs, even where file sharing works); reset, storage and the save schema; timer, rewards, notifications and the service worker. No new dependency.
+
+**Browser checks** (Playwright Chromium, `pnpm preview`, fresh contexts, 390x844):
+- Browser tab with a mocked `navigator.share`/`canShare` that would succeed: a real download `koa-data-2026-11-04.json` (`format: "koa-export"`, `data` with `version`, `timer`, `wallet`, `wardrobe`, `settings`), `share()` called 0 times, the Phase 8 message.
+- Installed iPhone app (`navigator.standalone = true`) with a mocked Web Share API: the mock received one file `koa-data-2026-11-04.json`, `application/json`, title "Koa data", valid export JSON, with `navigator.userActivation.isActive` true inside `share()`; no download. The hint showed "Choose where to save or send ..." while the sheet was open, then:
+  - success: "Done. ... is on its way.";
+  - `AbortError`: back to the idle hint, no download;
+  - `DataError`: one fallback download and the download message;
+  - `canShare` false: a direct download, `share()` not called.
+- **Not verifiable here:** a real share sheet. The iPhone check (the sheet offers Save to Files and the saved JSON is complete) is in Step 10.
+
+**Tests:** 21 new (`exportMethod.test.ts` 5: the rule for every env, cancel vs real errors; `progressData.share.test.ts` 16: the sheet used in a sharing installed app, the file's name, MIME type and text identical to the download, `canShare` asked about the exact file shared, `share()` called synchronously in the tap, nothing shared or downloaded without a tap, a second tap ignored while open, download in an installed app without file sharing, in a browser tab, without the capability and when the checks throw, cancel quiet, real failures and a throwing `share()` falling back to the download, both failing gives `failed`, no message after leaving the screen, the save never changed). The Phase 8 export and reset tests are unchanged and pass. `pnpm test` 610 tests in 37 files; lint and build pass (precache still 18 entries; entry JS 159.6 kB gzip, +0.3 kB over Step 7, still under the 160 kB budget of Step 9 but with little room left).
+
+**Limitations:** installed desktop apps (Chrome/Edge) that support file sharing also get the sheet, since the rule is "standalone and can share", not iOS only; that matches D11. The fallback download after a failed share runs after the tap's gesture, so a browser may block it (the failure message then shows only if the download throws). A download blocked silently still can't be detected (as in Phase 8). Real devices in Step 10.
+
 ---
 
 ### Step 9 — Mobile optimization and the performance budget
@@ -638,9 +696,9 @@ That one automatic reload comes from the plugin and is the deliberate exception 
 | Any character frame in `dist/characters/` | ≤ 150 KB | 112 KB |
 | App icons and splash screens | own per-file limits, set in Steps 2 and 5 from the real files (not precached): icons per file (`ICON_LIMITS`); splash 160 kB per iPhone image, 320 kB per iPad image, 5.5 MB in total | — |
 | Reference sheet in `dist/` | never | 2.0 MB today |
-| Lighthouse mobile (preview build): Performance | ≥ 90 | not measured |
-| Lighthouse: Accessibility, Best Practices | ≥ 95 | not measured |
-| LCP / CLS (Lighthouse mobile) | ≤ 2.5 s / ≤ 0.05 | not measured |
+| Lighthouse mobile (preview build): Performance | ≥ 90 | not measured (Step 10) |
+| Lighthouse: Accessibility, Best Practices | ≥ 95 | not measured (Step 10) |
+| LCP / CLS (Lighthouse mobile) | ≤ 2.5 s / ≤ 0.05 | not measured by Lighthouse (Step 10); Playwright approximation in Step 9 |
 
 **Scope:**
 - `scripts/check-build.mjs` enforces the size rows (fails the build).
@@ -657,6 +715,85 @@ That one automatic reload comes from the plugin and is the deliberate exception 
 **Acceptance:** every budget row met, or a deviation explained and approved.
 
 **Risks:** Lighthouse scores vary between runs and machines (Windows, simulated throttling); take the median of 3 runs.
+
+#### Implementation details (Step 9, approved 2026-11-04; Lighthouse outstanding)
+
+**Budget results** (`pnpm build`, this script's zlib gzip figures):
+
+| Metric | Budget | Result | Enforced by |
+|---|---|---|---|
+| Entry JS, gzip | ≤ 160 kB | **151.2 kB** | `checkBudget` (new) |
+| CSS, gzip | ≤ 12 kB | **7.8 kB** | `checkBudget` (new) |
+| Precache total (raw) | ≤ 1.2 MB | **967.8 kB**, 18 entries | `checkBudget` (new); the exact list as before |
+| Character frame | ≤ 150 kB | largest 111.8 kB | `checkFiles` (Step 1) |
+| Icons / splash | own limits | unchanged, all within | `checkFiles` / `checkSplash` (Steps 2, 5) |
+| Reference sheet in `dist/` | never | none | `checkFiles` (Step 1) |
+| LCP / CLS | ≤ 2.5 s / ≤ 0.05 | **~2.09 s / 0.0002** (Playwright approximation, see below) | measured, not a build rule |
+| Lighthouse Performance / Accessibility / Best Practices | ≥ 90 / ≥ 95 / ≥ 95 | **not measured** (moved to Step 10, see below) | measured, not a build rule |
+
+**What "entry JS" means.** The build used to print one "JS gzip" figure, the sum of **every** `.js` file in `dist/`: 159.6 kB after Step 8. That sum is the entry bundle (151.2 kB) plus the `workbox-window` chunk that `virtual:pwa-register` loads after launch (2.2 kB) plus `sw.js`, which runs in the worker's own thread (6.2 kB). The budget row is the entry JS, as in D12 (the 146 kB baseline was the only bundle at the time). The check now prints all three, and their total, on every build, so the 159.6 kB total stays visible:
+
+```
+check-build: 54 files, 5916.6 kB total
+  JS  gzip 159.6 kB in all:
+    entry 151.2 kB (budget 160.0 kB), loaded later 2.2 kB, sw.js 6.2 kB
+  CSS gzip 7.8 kB (budget 12.0 kB)
+  precache 18 entries, 967.8 kB (budget 1200.0 kB)
+```
+
+No JS was added or removed in this step; the entry bundle is byte-for-byte the size it was after Step 8. Motion's `LazyMotion`/`m` was a candidate only "if JS is over budget", so it wasn't done.
+
+**Build check** (`scripts/check-build.mjs`):
+- `BUDGET = { entryJsGzipBytes: 160_000, cssGzipBytes: 12_000, precacheBytes: 1_200_000 }`.
+- `entryScripts(html)`: the module `<script src>` and `<link rel="modulepreload">` files of `dist/index.html` (external URLs ignored). If none is found the build fails, so the JS budget can't be skipped by accident; an entry script missing from `dist/` fails too.
+- `checkBudget({ entryJs, entryJsGzip, cssGzip, precacheBytes })`: one error per row over budget (limits inclusive). The precache row is skipped in a kill switch build, which has no precache.
+- Planted check: 12 kB of random data appended to the entry bundle in a scratch copy of `dist/` → `budget: entry JS is 164.2 kB gzip, limit 160.0 kB`, exit 1. `KOA_SW_KILL_SWITCH=1 pnpm build` still passes.
+
+**Loading measurements** (Playwright, Chromium, `pnpm preview`, fresh contexts with no worker or cache = a first visit, Lighthouse's mobile settings emulated: 412×823 at DPR 1.75, 4× CPU slowdown, 150 ms RTT, 1.6 Mbps down; 3 runs): FCP = LCP = 2088 / 2076 / 2140 ms (median **2088 ms**), the LCP element is Koa's idle frame (`koa_idle_neutral.webp`, from the preload, fetched once). CLS **0.0002** in every run (one text shift when the web fonts swap in). Resource timing: the frame (0.20–1.47 s) and the entry JS (0.20–1.68 s) download in parallel; first paint waits for the JS.
+- **`fetchpriority="high"` on the preload: not added.** The frame already arrives before the JS, and the two share the bandwidth, so a higher priority for the frame would delay the JS, which is what the first paint waits for.
+- `decoding="async"` is already on every Koa frame. Font loading shifts nothing measurable (0.0002), so no font change.
+- So no performance code changed: the measurements show nothing to fix.
+- **Lighthouse itself was not run.** `npx lighthouse` (downloading the package, as the plan says, not adding it as a dependency) was blocked by this session's permission settings. The numbers above approximate LCP and CLS but aren't Lighthouse scores. To record the Lighthouse rows, start `pnpm preview` and run three times (mobile is the CLI's default form factor), then take the median: `npx lighthouse http://localhost:4173/ --only-categories=performance,accessibility,best-practices --output=json --output-path=./lh-1.json --chrome-flags="--headless=new"`. The Lighthouse rows stay open and are measured in Step 10 (D1). Step 9 was approved with this item outstanding; no score is estimated or recorded until a real run.
+
+**Mobile layout fixes** (CSS only):
+- **Start under the nav at 375×667 (known since Step 4): fixed.** `home.css`: the stage is `clamp(200px, min(86vw, 44dvh, 100dvh − 440px − safe-top − safe-bottom), 380px)`. The new third term only bites on short portrait screens. 375×667: stage 293 → 227 px, Start 558–610 → 487–547, **40 px clear of the nav** (it overlapped by 23 px); with the standalone 20 px status bar, still 40 px. On 390×844, 430×932 and iPad the stage is unchanged in a browser tab (335, 370, 500 px). In standalone with iPhone safe areas (47/34 and 59/34) the stage is 323 px on 390×844 (was 335) and 370 px on 430×932 (unchanged), and Start sits 28 px and 53 px clear of the nav.
+- **Phone landscape (known since Step 6): fixed.** With `(orientation: landscape) and (max-height: 500px)`:
+  - `bottom-nav.css`: the nav becomes a compact rail on the left (80 px wide, 56 px items, `safe-left + 12px`), like the desktop rail, instead of a bar taking a fifth of the height and covering Koa.
+  - `app.css`: padding for the rail on the left, none reserved below.
+  - `home.css`: the two-column layout (stage left; modes, timer and controls right), rows 12 px apart, stage `clamp(180px, min(100dvh − 140px − safe areas, 100vw − 460px), 300px)`, timer at its normal size.
+  - `shop.css`: the purchase toast sits low like on desktop (no bar to clear).
+  - Result: Home doesn't scroll at all in 844×390 (with and without the 47/21/47 insets), 932×430 and 667×375; Start is 76–96 px above the bottom. Shop, Stats and Settings scroll as before, with more room.
+- **Skip confirmation under the nav: fixed.** Found during the review: the inline "Skip this session?" buttons replace the controls and are taller than Start. On 375×667 they were 7 px under the nav, on 390×844 with safe areas 18 px. `app.css`: `html { scroll-padding-bottom: safe-bottom + nav-height + 24px }` (0 where the nav is a rail). The confirmation's Keep button gets focus when it opens, so the browser now scrolls it clear: **12 px above the nav** on 375×667, 390×844 and 430×932 with and without safe areas. The same rule keeps keyboard focus clear of the nav on every tab. Keep returns to the controls with Start 58 px clear.
+- **Tap targets: one fix.** An audit of every button, link, input and switch on all four tabs at 320, 390, 844 and 1440 px found only the segmented control under 44 px (40 px: Home's mode chips and Shop's category tabs). `segmented.css`: `min-height: 44px`. Everything else, including every Settings control and the nav, was already ≥ 44 px.
+- **Narrow viewports (page zoom): fixed for 320 px.** At 320 px wide (WCAG's reflow width, e.g. iPhone page zoom) Home scrolled sideways: the mode chips (294 px) and the controls row (~322 px) didn't fit between 20 px gutters. Below 360 px only: `--gutter: 12px` (`tokens.css`), an 8 px gap in the controls row (`timer.css`), and `white-space: nowrap` on segmented options (labels wrapped to two lines). Nothing changes at 375 px and up. Start needs a short scroll at 320×568 (it's 47 px under the nav before scrolling, clear after).
+
+**Viewport checks** (Playwright, `pnpm preview`, a fresh context per size, all four tabs, safe areas simulated with `--safe-*`; screenshots in `art/review-phase9/step9-*`, not committed):
+
+| Viewport (safe areas t/r/b/l) | Home: Start vs nav | Home scrolls | Horizontal scroll | Controls in safe areas |
+|---|---|---|---|---|
+| 375×667 (0) / (20/0/0/0) | 40 / 40 px clear | 44 px (the skip confirmation's reserved height) | none | none |
+| 390×844 (0) / (47/0/34/0) | 90 / 28 px clear | 0 / 56 px | none | none |
+| 430×932 (0) / (59/0/34/0) | 115 / 53 px clear | 0 / 31 px | none | none |
+| 844×390 (0) / (0/47/21/47) | 87 / 76 px above the bottom | 0 | none | none |
+| 932×430 (0/59/21/59), 667×375 | 96 / 79 px | 0 | none | none |
+| 820×1180 (0) / (24/0/20/0), 1180×820 | 154 / 132 / 227 px | 0 | none | none |
+| 1440×900 | 289 px | 0 | none | none |
+| 720×450 (1440×900 at 200% zoom) | 117 px (rail layout) | 0 | none | none |
+| 320×568 (≈ 120% page zoom on a phone) | after a short scroll | 116 px | none | none (Shop's tab row scrolls sideways by design) |
+
+On every tab, after scrolling to the end, the last control is at least 32 px above a bottom nav. **Not supported: 195 px wide** (a 390 px phone at 200% page zoom): the mode chips, the controls and the Settings rows don't fit, and the page scrolls sideways. Fixing that would need a different narrow layout; recorded for the Phase 10 accessibility pass. Desktop browser zoom at 200% works (720×450 above).
+
+**Other checks:** the Settings number inputs are still 2rem (no iOS focus zoom). After the changes, the production build works offline on all four tabs in a fresh context (worker ready, offline reload, fonts and Koa from the precache) with no console errors or warnings. Running focus, skip and keep were checked on Home at 375×667, 390×844, 430×932 and in landscape.
+
+**Tests:** 11 new in `scripts/check-build.test.ts` (`entryScripts` 3: module scripts and modulepreloads, classic/external scripts ignored and duplicates removed, none found; `checkBudget` 8: the approved numbers, the current build, each limit inclusive, entry JS, CSS and precache over budget, no precache row in a kill switch build, no entry script found, several rows at once). Existing tests unchanged. `pnpm test` 621 tests in 37 files; `pnpm lint` and `pnpm build` pass.
+
+**Unchanged:** all JS (no component or store edits), the timer, rewards, coins, storage and the save schema, the export format, Step 7 notifications and Step 8 sharing, icons, splash screens and character art; no new dependency.
+
+**Limitations / for Step 10:**
+- The Lighthouse rows (Performance, Accessibility, Best Practices, and Lighthouse's own LCP/CLS) are still to be measured, as above (Step 10).
+- 195 px wide (a phone at 200% page zoom) still scrolls sideways (Phase 10 accessibility pass).
+- iPhone SE in a **Safari tab** (not installed) has about 550 px of visible height with the toolbars. Home then needs a short scroll before Start clears the nav, as in Phase 8; the stage stops shrinking at 200 px. The installed app (full 667 px) doesn't scroll.
+- The landscape rail and safe areas are checked with simulated insets only; real notch and home-indicator placement in landscape is part of the Step 10 iPhone checklist (item 2).
 
 ---
 
@@ -677,7 +814,8 @@ That one automatic reload comes from the plugin and is the deliberate exception 
   8. Deploy a new version: reopen the app, the update card appears (not during a running focus session), Update applies it, data intact.
 - **Android Chrome checklist:** install via the prompt or menu, offline launch, a notification through the worker with the badge, tapping it opens Koa, update flow.
 - **Desktop:** Chrome/Edge install and offline; Safari "Add to Dock" smoke check.
-- Lighthouse/installability check per D1.
+- **Carried over from Step 9:** Lighthouse mobile Performance (≥ 90), Accessibility and Best Practices (≥ 95), median of 3 runs against `pnpm preview` (command in Step 9), plus the installability checklist per D1. Record the real numbers in Step 9's budget table; never estimate them.
+- **Also still unverified:** landscape safe areas and notch placement on a real iPhone (checklist item 2), real iOS file sharing (item 7), a real notification tap on Android (and Android in general), and the short scroll before Start in a Safari tab on iPhone SE (expected; note whether it's acceptable).
 - Docs: README (features, limitations, install instructions, a short deployment section pointing to section 9), `CLAUDE.md` (status, architecture, Phase 9 section, Playwright notes about service workers), `docs/architecture.md` (`src/sw.ts`, `src/features/pwa/`, `src/core/pwa/`, dependencies table), `docs/roadmap.md` (status, decisions log), this plan (implementation details, results).
 
 **Acceptance:** the three completion criteria met (with D1's definition), checklists recorded, `pnpm test`, `pnpm lint`, `pnpm build` pass.
@@ -822,7 +960,7 @@ Koa has one page and hash-based tabs (`/#/shop`), so it needs no redirects. With
 
 ## 10. Implementation sequence
 
-Steps 1–6 approved (2026-11-03); Step 7 is next; the rest not started. One step at a time, each verified, documented and approved before the next.
+Steps 1–6 approved and committed (2026-11-03); Steps 7–9 approved and committed (2026-11-04; Step 9's Lighthouse scores move to Step 10); Step 10 next, not started. One step at a time, each verified, documented and approved before the next.
 
 1. Reference sheet out of the build + build check (approved 2026-11-03)
 2. App icons (approved provisionally 2026-11-03)
@@ -830,7 +968,7 @@ Steps 1–6 approved (2026-11-03); Step 7 is next; the rest not started. One ste
 4. Update flow, app version, kill switch (approved 2026-11-03)
 5. iOS splash screens (approved 2026-11-03)
 6. Standalone polish and install help (approved 2026-11-03)
-7. Notifications through the service worker (**next**)
-8. Export through the share sheet
-9. Mobile optimization and performance budget
+7. Notifications through the service worker (approved 2026-11-04)
+8. Export through the share sheet (approved 2026-11-04)
+9. Mobile optimization and performance budget (approved 2026-11-04; Lighthouse scores outstanding, measured in Step 10)
 10. Cloudflare Pages deployment, device verification, documentation
