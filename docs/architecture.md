@@ -1,6 +1,6 @@
 # Koa — Architecture
 
-*As built through Phase 8 (settings, stats, keep screen on, notifications, sounds, export and reset). Planned parts are marked **(planned)**.*
+*As built through Phase 8 (settings, stats, keep screen on, notifications, sounds, export and reset) and Phase 9 Steps 1–6 (offline service worker, update flow, app icons, iOS splash screens, install help). Planned parts are marked **(planned)**; the rest of Phase 9 is in `docs/phase-9/pwa-plan.md`.*
 
 ## Principles
 
@@ -19,10 +19,11 @@ src/
     App.tsx                 # shell: top bar, tab screens, bottom nav, reward overlay
     connect.ts              # one-time wiring: timer → rewards, settings → timer, timer/wallet/input → Koa,
                             # wake lock / notification / sound launch checks, cross-tab refresh
-                            # (wallet, wardrobe, settings) and cross-tab reset detection
+                            # (wallet, wardrobe, settings) and cross-tab reset detection,
+                            # service worker registration, update checks, install-help listening
     useHashTab.ts           # tab state mirrored to location.hash (#/shop)
     useTimerAmbience.ts     # tab title countdown, focus-mode dimming, completion announcement
-    screens/                # HomeScreen, ShopScreen, SettingsScreen (+ DataCard: export, reset), StatsScreen,
+    screens/                # HomeScreen, ShopScreen, SettingsScreen (+ InstallCard, DataCard: export, reset), StatsScreen,
                             # ComingSoonScreen (Koa resting state, used for the Stats empty state)
   core/                     # pure logic, no React (unit tested)
     timer/engine.ts         # timer state machine + transitions
@@ -37,6 +38,8 @@ src/
     settings/settings.ts    # settings model: validation, stepping, typed input, restore, timerConfigFrom
     stats/stats.ts          # stats derived from the ledger: today, 7-day window, totals, streaks, goal days
     data/data.ts            # export envelope, file name, reset state, reset summary, isProgressReset
+    pwa/update.ts           # shouldOfferUpdate (never during running focus), isUpdateCheckDue (hourly, online)
+    pwa/install.ts          # installHelp (what the install card shows), detectInstallBrowser
     time.ts                 # local-day keys, calendar-day arithmetic (DST-safe)
   features/                 # React-facing stores, hooks and components per domain
     timer/                  # timerStore, store (singleton), useTimer, TimerFace, format
@@ -48,6 +51,8 @@ src/
     notifications/          # notifier (injected NotificationEnv), bindNotifications (timer events + setting), store
     sounds/                 # sound controller (injected SoundEnv), chime synthesis, bindSounds, store
     data/                   # progressData (export, two-step reset; storage and download injected), store + reloadProgress
+    pwa/                    # registration (injected PwaEnv), updateStore + UpdatePrompt, displayMode (isStandalone),
+                            # installStore (beforeinstallprompt, used once), browserPwaEnv, store (singletons)
     koala/                  # manifest.ts (poses + accessory art), Koala.tsx (rendering + motions),
                             # koalaStore/store (brain + ticking), KoaCompanion (bubble, nap glyphs)
   ui/                       # design-system primitives: Button/IconButton, SegmentedControl,
@@ -57,8 +62,20 @@ src/
     persistence.ts          # versioned save (koa:v1), slices, migrations, backup
   config/                   # timerDefaults.ts, rewards.ts, catalog.ts, koalaBehavior.ts, koalaLines.ts,
                             # settings.ts (ranges, defaults, focus presets), notifications.ts (copy, 5-min
-                            # staleness), sounds.ts (chime spec and timing)
+                            # staleness), sounds.ts (chime spec and timing), pwa.ts (update check interval, timeout)
   styles/                   # tokens.css (design tokens), base.css (reset, fonts)
+  sw.ts                     # the service worker (built to dist/sw.js by vite-plugin-pwa; own tsconfig.sw.json)
+  vite-env.d.ts             # virtual:pwa-register types, __APP_VERSION__
+public/
+  characters/               # Koa frames (WebP 1024 + 512), precached
+  icons/                    # app icons + notification badge (scripts/art/make_icons.py), not precached
+  splash/                   # 30 iOS startup images (scripts/art/make_splash.py), not precached
+scripts/
+  check-build.mjs           # post-build check (run by pnpm build): no reference art, image limits, exact precache,
+                            # splash images match index.html, kill-switch worker only with KOA_SW_KILL_SWITCH=1
+  app-version.ts            # __APP_VERSION__ for Settings (Cloudflare commit, else git, else package version)
+  art/                      # normalize_export.py, make_blink.py, make_icons.py, make_splash.py (Pillow)
+art/reference/              # the design sheet (never shipped)
 ```
 
 **Navigation:** four tabs (Home, Shop, Stats, Settings) switched in state and mirrored to `location.hash`. There's no router dependency.
@@ -134,7 +151,7 @@ interface Wallet {
 - **Valid values only:** `setNumber` ignores anything off the range or step grid. Typed input is rounded, clamped and snapped on blur (`commitInput`).
 - **Store** (`features/settings/settingsStore.ts`): `getState`, `subscribe`, `setNumber`, `setFlag`, `refresh` (other tabs). Saves on every real change.
 - **Readers:** the timer (`setConfig`), the wallet (`dailyGoalMinutes()` read inside `award()`), the Home cycle leaves, Stats (the goal), the wake lock (`keepScreenOn`), notifications (`notifications`) and sounds (`sounds`).
-- **Screen** (`SettingsScreen.tsx`): Timer, Daily goal, "While you focus" (Keep screen on, Session notifications, Sounds) and "Your data" (`DataCard.tsx`: Export, Reset progress) cards, built from `<Stepper>`, `<Switch>` and `<Button>`.
+- **Screen** (`SettingsScreen.tsx`): Timer, Daily goal, "While you focus" (Keep screen on, Session notifications, Sounds), "Install Koa" (`InstallCard.tsx`, Phase 9, hidden in the installed app) and "Your data" (`DataCard.tsx`: Export, Reset progress) cards, built from `<Stepper>`, `<Switch>` and `<Button>`, then the app version caption.
 
 ## Stats (`src/core/stats/`, Phase 8)
 
@@ -155,6 +172,7 @@ interface Wallet {
 - **Notifier** (`notifications.ts`): the browser API comes in as `NotificationEnv` (real: `browserNotificationEnv()`). It shows a notification only if the setting is on, the permission is `granted` and the user isn't looking (page hidden or window unfocused). It uses the service worker registration when there is one, else `new Notification`. Statuses: `unsupported`, `default`, `requesting`, `dismissed`, `denied`, `granted`, `failed`; re-read on focus, visibility and the Permissions API `change` event.
 - **Permission** is requested only by `enable()`, called from the Settings switch tap. Launch, completions and Reset progress never ask.
 - **Binding** (`bindNotifications.ts`): a timer event listener that catches everything, so a failing notification can't stop the wallet's listener or the save.
+- **Since Phase 9 Step 3** production builds have a service worker, so notifications go through `registration.showNotification`. The worker has no `notificationclick` handler until Step 7, so clicking a notification doesn't focus Koa yet.
 
 ## Sounds (`src/features/sounds/`, Phase 8)
 
@@ -185,6 +203,19 @@ interface Wallet {
 - Rules are in the character bible §4.
 - **Accessories:** `accessoryArt` in `manifest.ts`, canvas-aligned frames (see character bible §5). It's **empty: no accessory artwork exists yet.**
 
+## PWA and offline (`src/features/pwa/`, `src/sw.ts`, Phase 9 Steps 1–6)
+
+- **Manifest and worker** (`vite.config.ts`): `vite-plugin-pwa` with `injectManifest`, `registerType: 'prompt'`, no injected register script, `devOptions` off (`pnpm dev` never has a worker). Manifest: `id`, `start_url` and `scope` `/`, `display: standalone`, cream background and theme color, icons 192, 512 and maskable 512.
+- **Service worker** (`src/sw.ts`): precaches exactly 18 entries (shell, manifest, favicon, JS, CSS, 8 font files, the 4 Koa frames; about 965 kB), cache prefix `koa`, cleans outdated caches, serves the precached `index.html` for navigations, and handles only the `SKIP_WAITING` message. It never touches app data. Icons and splash images aren't precached (the OS fetches them at install).
+- **Registration** (`registration.ts`, env `browserPwaEnv`): once, after `load`, production and secure context only. Failures are caught; the app works online as before.
+- **Updates** (`updateStore.ts` + `UpdatePrompt.tsx`, rules in `core/pwa/update.ts`, decision D3): a new version waits. Koa checks on launch and on becoming visible, at most hourly and only online. A compact "Koa has an update" card under the top bar offers Update (one `SKIP_WAITING` hand-over, one reload of this tab only) or Later (hidden until the next launch). Never shown during a running focus session. The plugin's automatic reload of other tabs is disabled.
+- **Kill switch:** building with `KOA_SW_KILL_SWITCH=1` ships the plugin's self-destroying worker (unregisters, deletes Koa's caches, reloads open pages once; LocalStorage untouched). The build check accepts that worker only in this mode.
+- **App version:** `__APP_VERSION__` (`scripts/app-version.ts`) is shown as a caption in Settings.
+- **Install help** (`installStore.ts`, `displayMode.ts`, rules in `core/pwa/install.ts`, card `app/screens/InstallCard.tsx`): hidden when `isStandalone()` or where installing isn't possible. Chromium: the captured `beforeinstallprompt` (banner suppressed) is opened only by the Install tap and used once. iPhone/iPad: Share → Add to Home Screen steps and the separate-data note. Other browsers: their menu command. Listening starts in `connect.ts` before render.
+- **iOS:** `apple-touch-icon` and 30 `apple-touch-startup-image` links in `index.html` (exact device size, pixel ratio and orientation), `apple-mobile-web-app-capable`, status bar style `default`, `viewport-fit=cover` with the safe-area tokens (`--safe-*`). Pinch zoom stays allowed. The installed iPhone app has its own storage, separate from Safari (decision D10, no import).
+- **Build check** (`scripts/check-build.mjs`): fails the build on reference art in `dist/`, oversized character frames, icons or splash images, a precache that isn't exactly the expected list, splash images that don't match their `<link>` media queries, or a kill-switch worker in a normal build.
+- **Hosting (planned, Step 10):** Cloudflare Pages (Free plan) with GitHub integration, `pnpm build` → `dist`, Node 24 and pnpm 12.14.0 pinned, `public/_headers` with `no-cache` for `sw.js`, `index.html` and the manifest, and immutable `/assets/*`. Not connected yet.
+
 ## Dependencies
 
 | Package | Why |
@@ -196,6 +227,8 @@ interface Wallet {
 | `vitest` (dev) | Unit tests |
 | `@typescript/native` → TypeScript 7 (dev) | `tsc` type checking and build |
 | `typescript` → `@typescript/typescript6` (dev) | TypeScript 6 API for typescript-eslint (until TS 7.1) |
-| `vite-plugin-pwa` **(planned)** | Manifest, service worker, offline support (Phase 9) |
+| `vite-plugin-pwa` (dev) | Web App Manifest and the `injectManifest` build of `src/sw.ts` (Phase 9) |
+| `workbox-core`, `workbox-precaching`, `workbox-routing` (dev) | Bundled into `sw.js`: cache names, precache, navigation fallback |
+| `workbox-window` (dev) | Registration helper behind `virtual:pwa-register` (a direct entry because pnpm doesn't expose the plugin's own copy) |
 
 End-to-end checks currently run through the Playwright MCP tooling during development. A committed `@playwright/test` suite is planned for Phase 10.

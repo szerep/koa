@@ -29,6 +29,10 @@
   color: var(--bark-600);
   text-decoration: none;
   transition: color var(--dur-fast) var(--ease-out);
+  /* The tabs are links (#/shop): no iOS link preview or text selection on a long press. */
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .nav__item:hover {

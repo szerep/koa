@@ -62,7 +62,7 @@ We have already generated the first official Koa character design sheet.
 
 Its location is:
 
-public/characters/reference/koala-design-sheet.png
+art/reference/koala-design-sheet.png
 
 This image is the definitive visual reference for the mascot.
 

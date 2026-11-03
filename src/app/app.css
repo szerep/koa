@@ -1,6 +1,7 @@
 .app {
   display: grid;
-  grid-template-rows: auto 1fr;
+  /* Top bar, the update card (empty unless a new version is offered), the screen. */
+  grid-template-rows: auto auto 1fr;
   min-height: 100dvh;
   padding:
     calc(var(--safe-top) + var(--space-3))

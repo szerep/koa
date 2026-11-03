@@ -11,6 +11,8 @@
   transform-origin: 50% 100%;
   user-select: none;
   -webkit-user-select: none;
+  /* No "Save image" / share callout when Koa is long-pressed (iOS), on the frame only. */
+  -webkit-touch-callout: none;
 }
 
 .koala__figure--button {

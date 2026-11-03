@@ -6,6 +6,7 @@ import { timerConfigFrom } from '../core/settings/settings'
 import { reloadProgress } from '../features/data/store'
 import { koalaStore } from '../features/koala/store'
 import { notifications } from '../features/notifications/store'
+import { install, pwa, updates } from '../features/pwa/store'
 import { walletStore } from '../features/rewards/store'
 import { settingsStore } from '../features/settings/store'
 import { wardrobeStore } from '../features/shop/store'
@@ -83,4 +84,25 @@ export function connectFeatures() {
     wardrobeStore.refresh()
     settingsStore.refresh()
   })
+
+  // Offline support: register the service worker once the page has loaded (after the first
+  // render). Production builds only; a failure never affects the app.
+  // Updates: a waiting new version is offered by <UpdatePrompt> (never during a running focus
+  // session). Koa looks for one on launch (once registered) and whenever it becomes visible
+  // again, at most once an hour and never offline, so an installed iPhone app that resumes from
+  // memory still finds new versions.
+  pwa.onUpdateReady(() => updates.ready())
+  const stopLaunchCheck = pwa.subscribe(() => {
+    if (pwa.getState() !== 'registered') return
+    stopLaunchCheck()
+    void updates.check()
+  })
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && pwa.getState() === 'registered') void updates.check()
+  })
+  pwa.register()
+
+  // Install help (Step 6): listen before render, because Chromium's `beforeinstallprompt` can fire
+  // early. Nothing is shown or prompted here; the Settings row offers it, and only a tap prompts.
+  install.start()
 }

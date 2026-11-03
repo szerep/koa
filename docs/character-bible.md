@@ -1,6 +1,6 @@
 # Koa — Character Bible and Asset Plan
 
-Canonical reference: `public/characters/reference/koala-design-sheet.png`. This is a reference only and is never displayed in the app.
+Canonical reference: `art/reference/koala-design-sheet.png`. This is a reference only and is never displayed in the app.
 
 ## 1. Identity
 
@@ -57,6 +57,14 @@ The sheet is 1536×1024 RGB with no alpha channel, and each pose is only about 1
 Assets available to the app:
 - `public/characters/koa_idle_neutral.webp` (+ `-512`)
 - `public/characters/koa_idle_blink.webp` (+ `-512`)
+
+Derived assets (compositions of the approved Master, no new artwork; Phase 9 Step 2, decision D4):
+- `public/icons/apple-touch-icon-180.png`, `icon-192.png`, `icon-512.png`: Koa's head and shoulders cropped from `art/master/koa_idle_neutral.normalized.png`, on cream (`--cream-100`). The outer ear rims run slightly off the sides.
+- `public/icons/icon-maskable-512.png`: the same frame, fitted so the head, ears and tuft sit inside the central 80% safe circle.
+- `public/icons/badge-96.png`: the favicon's leaf mark as a white silhouette (Android notification badge). Not Koa.
+- All are made by `scripts/art/make_icons.py`. When the Master is replaced, re-run it; never edit the icons by hand.
+- `public/splash/koa-splash-<w>x<h>.jpg` (Phase 9 Step 5, decision D7): 30 iOS startup images (12 iPhone portrait, 9 iPads in portrait and landscape). Each is the idle frame from `art/master/koa_idle_neutral.normalized.png`, unchanged and only resized (0.37× on iPhone SE up to 1.01× on the 13-inch iPad Pro, so never visibly upscaled), centered on cream (`--cream-100`, `#f9eee1`). Koa's artwork is 40% of the screen's shorter side wide, so it's the same physical size in both iPad orientations. No text, no shadow, no new drawing. JPEG quality 92 without chroma subsampling (visually identical to lossless, about ¼ the size).
+- Made by `scripts/art/make_splash.py`, which also checks every image and the matching `<link>` tags in `index.html`. Re-run it when the Master is replaced; never edit the splash images by hand.
 
 All other poses, expressions, and accessories are **deferred**. The app must work gracefully with only these two frames. For example, the study and break states keep showing idle until their art exists. A missing asset is never replaced with a substitute drawing.
 

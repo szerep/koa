@@ -76,7 +76,7 @@ The palette comes from the reference sheet. The sheet's printed hex labels are l
 | `label` | 14/1.3 Nunito Sans 700 | Buttons, chips |
 | `caption` | 12/1.3 Nunito Sans 600 | Meta, nav labels |
 
-- Use sentence case everywhere and no all-caps UI. The one exception is the small tracked tagline "THE STUDY KOALA" from the sheet, kept for the splash and about screens.
+- Use sentence case everywhere and no all-caps UI. The one exception is the small tracked tagline "THE STUDY KOALA" from the sheet, reserved for a future about screen. (The iOS splash screens from Phase 9 are image only: Koa on cream, no text.)
 
 ## 4. Shape, space, and motion language
 

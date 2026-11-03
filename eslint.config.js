@@ -19,4 +19,11 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // The service worker runs in a worker scope (Phase 9).
+    files: ['src/sw.ts'],
+    languageOptions: {
+      globals: globals.serviceworker,
+    },
+  },
 ])

@@ -1,4 +1,4 @@
-import { useId, useSyncExternalStore } from 'react'
+import { useId, useRef, useSyncExternalStore } from 'react'
 import { rewardRules } from '../../config/rewards'
 import { focusPresets, settingsSpec } from '../../config/settings'
 import { sessionsForGoal, type NumericSetting } from '../../core/settings/settings'
@@ -13,7 +13,9 @@ import { wakeLock } from '../../features/wakeLock/store'
 import type { WakeLockStatus } from '../../features/wakeLock/wakeLock'
 import { Stepper } from '../../ui/Stepper'
 import { Switch } from '../../ui/Switch'
+import { install } from '../../features/pwa/store'
 import { DataCard } from './DataCard'
+import { InstallCard } from './InstallCard'
 import './settings.css'
 
 const minutes = (n: number) => `${n} ${n === 1 ? 'minute' : 'minutes'}`
@@ -71,6 +73,16 @@ export function SettingsScreen() {
   const { focus, shortBreak, longBreak } = settings.durations
   const goal = settings.dailyGoalMinutes
   const goalSessions = sessionsForGoal(goal, focus)
+  const installHeading = useRef<HTMLHeadingElement>(null)
+
+  /** From the notifications row: bring the install steps into view and move focus there. */
+  const showInstall = () => {
+    const heading = installHeading.current
+    if (!heading) return
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    heading.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    heading.focus({ preventScroll: true })
+  }
 
   return (
     <div className="settings">
@@ -169,11 +181,16 @@ export function SettingsScreen() {
           While you focus
         </h2>
         <KeepScreenOnRow enabled={settings.keepScreenOn} />
-        <NotificationsRow enabled={settings.notifications} />
+        <NotificationsRow enabled={settings.notifications} onShowInstall={showInstall} />
         <SoundsRow enabled={settings.sounds} />
       </section>
 
+      <InstallCard headingRef={installHeading} />
+
       <DataCard />
+
+      {/* Which version is running, e.g. on an installed iPhone app (Phase 9, decision D6). */}
+      <p className="settings__version">Koa {__APP_VERSION__}</p>
     </div>
   )
 }
@@ -237,12 +254,15 @@ function notificationHint(status: NotificationStatus, on: boolean, appleMobile: 
   }
 }
 
-function NotificationsRow({ enabled }: { enabled: boolean }) {
+function NotificationsRow({ enabled, onShowInstall }: { enabled: boolean; onShowInstall: () => void }) {
   const status = useSyncExternalStore(notifications.subscribe, notifications.getStatus)
+  const { help } = useSyncExternalStore(install.subscribe, install.getState)
   const labelId = useId()
   const hintId = useId()
   const allowed = status === 'granted' || status === 'failed'
   const on = enabled && allowed
+  // iPhone/iPad Safari: notifications need the Home Screen app, so point to the install steps.
+  const linkToInstall = status === 'unsupported' && notifications.appleMobile && help === 'ios-steps'
   return (
     <div className="settings-row">
       <div className="settings-row__main">
@@ -252,6 +272,14 @@ function NotificationsRow({ enabled }: { enabled: boolean }) {
           </span>
           <span id={hintId} className="settings-row__hint" aria-live="polite">
             {notificationHint(status, on, notifications.appleMobile)}
+            {linkToInstall && (
+              <>
+                {' '}
+                <button type="button" className="settings-row__link" onClick={onShowInstall}>
+                  How to add Koa
+                </button>
+              </>
+            )}
           </span>
         </div>
         <Switch

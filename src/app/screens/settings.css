@@ -12,6 +12,15 @@
   padding-inline: var(--space-1);
 }
 
+/* The app version (Phase 9, D6): a quiet caption under the last card. */
+.settings__version {
+  justify-self: center;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Grouped cream card (design brief §6): plain rows, the same radii and shadow as everywhere else. */
 .settings-card {
   display: grid;
@@ -206,4 +215,49 @@
   .reset-confirm__delete:hover {
     background: var(--blush-200);
   }
+}
+
+/* Install Koa (Phase 9, Step 6): the iPhone/iPad steps and the Install button. */
+.install__action {
+  flex-shrink: 0;
+}
+
+.install-steps {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: 1.4em;
+  color: var(--text);
+  font-size: var(--text-label);
+}
+
+.install-steps strong {
+  color: var(--text-heading);
+  font-weight: 700;
+}
+
+.install-steps__icon {
+  display: inline-block;
+  margin-inline: 0.15em 0.2em;
+  vertical-align: -0.15em;
+  color: var(--accent-strong);
+}
+
+/* A heading reached from "How to add Koa" (focused for screen readers, no ring needed). */
+.settings-card__title:focus {
+  outline: none;
+}
+
+.settings-card__title:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  border-radius: var(--radius-chip);
+}
+
+/* An inline text action inside a hint ("How to add Koa"). */
+.settings-row__link {
+  display: inline;
+  color: var(--accent-strong);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: 4px;
 }

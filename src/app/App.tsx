@@ -1,6 +1,7 @@
 import { ChartNoAxesColumn, House, Settings, ShoppingBag } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
+import { UpdatePrompt } from '../features/pwa/UpdatePrompt'
 import { RewardLayer } from '../features/rewards/RewardLayer'
 import { walletStore } from '../features/rewards/store'
 import { BottomNav, type NavItem } from '../ui/BottomNav'
@@ -45,6 +46,8 @@ export default function App() {
           <Wordmark />
           <CoinPill coins={wallet.balance} countUpDelayMs={900} />
         </header>
+
+        <UpdatePrompt />
 
         <main className="app__main">
           <AnimatePresence mode="wait" initial={false}>
