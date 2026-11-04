@@ -1,6 +1,6 @@
 # Phase 9 — PWA and mobile optimization plan
 
-**Status:** plan approved (2026-11-03), with the decisions in section 8. **Steps 1–3 approved (2026-11-03; the icons provisionally, their composition may be revisited in a polish pass; Step 3 including the direct `workbox-window` dev dependency). Steps 4–6 approved (2026-11-03); Steps 1–6 are committed together. Steps 7 (notifications through the service worker) and 8 (export through the share sheet) approved 2026-11-04. Step 9 (mobile optimization and the performance budget) approved 2026-11-04 with one open item: the Lighthouse rows are not measured yet and move to Step 10. Steps 7–9 committed together 2026-11-04. Step 10 is in progress (2026-11-04): the local verification is done and reviewed (Lighthouse 92 / 96 / 100; LCP 3.1 s vs the ≤ 2.5 s target, accepted as a documented deviation; the coin pill accessibility fix made and verified; deployment files added; headers verified in Cloudflare's local emulator; the Cloudflare configuration approved). Cloudflare Pages is now connected and the first production deployment is live (`https://koa-5cl.pages.dev`, commit `25ab26e`; HTTP and browser smoke checks pass). A custom 404 page (see Step 10) is approved and verified locally; its live verification is pending. No real-device check has been run yet.** Each step below is implemented, verified and documented on its own, then waits for explicit approval, like Phase 8.
+**Status:** plan approved (2026-11-03), with the decisions in section 8. **Steps 1–3 approved (2026-11-03; the icons provisionally, their composition may be revisited in a polish pass; Step 3 including the direct `workbox-window` dev dependency). Steps 4–6 approved (2026-11-03); Steps 1–6 are committed together. Steps 7 (notifications through the service worker) and 8 (export through the share sheet) approved 2026-11-04. Step 9 (mobile optimization and the performance budget) approved 2026-11-04 with one open item: the Lighthouse rows are not measured yet and move to Step 10. Steps 7–9 committed together 2026-11-04. Step 10 is in progress (2026-11-04): the local verification is done and reviewed (Lighthouse 92 / 96 / 100; LCP 3.1 s vs the ≤ 2.5 s target, accepted as a documented deviation; the coin pill accessibility fix made and verified; deployment files added; headers verified in Cloudflare's local emulator; the Cloudflare configuration approved). Cloudflare Pages is connected and live (`https://koa-5cl.pages.dev`; deployments `25ab26e`, then `274dd92`, now `a839f5e`; HTTP and browser smoke checks pass). A custom 404 page (see Step 10) is approved and verified in production (`274dd92`). Real-device checks (user-confirmed, results in "Device checklists"): Samsung Galaxy Note 10+ (Android Chrome) install, offline, notification delivery and tap-to-open, and the update lifecycle pass; Windows laptop install, offline and the update lifecycle (in browser tabs) pass. Not verified: the leaf badge and Koa icon on Android notifications (a plain bell icon showed). iOS/iPadOS: NOT TESTED (no device available). Phase 9 stays open: the completion criterion "Installs on iPhone" is unchanged and not yet met.** Each step below is implemented, verified and documented on its own, then waits for explicit approval, like Phase 8.
 
 ## 1. Goals and scope
 
@@ -815,7 +815,7 @@ On every tab, after scrolling to the end, the last control is at least 32 px abo
 - **Android Chrome checklist:** install via the prompt or menu, offline launch, a notification through the worker with the badge, tapping it opens Koa, update flow.
 - **Desktop:** Chrome/Edge install and offline; Safari "Add to Dock" smoke check.
 - **Carried over from Step 9:** Lighthouse mobile Performance (≥ 90), Accessibility and Best Practices (≥ 95), median of 3 runs against `pnpm preview` (command in Step 9), plus the installability checklist per D1. Record the real numbers in Step 9's budget table; never estimate them.
-- **Also still unverified:** landscape safe areas and notch placement on a real iPhone (checklist item 2), real iOS file sharing (item 7), a real notification tap on Android (and Android in general), and the short scroll before Start in a Safari tab on iPhone SE (expected; note whether it's acceptable).
+- **Also still unverified (at planning time):** landscape safe areas and notch placement on a real iPhone (checklist item 2), real iOS file sharing (item 7), a real notification tap on Android (and Android in general), and the short scroll before Start in a Safari tab on iPhone SE (expected; note whether it's acceptable). *Since checked (2026-11-04):* Android in general and a real notification tap (see "Device checklists"). The iPhone items remain NOT TESTED.
 - Docs: README (features, limitations, install instructions, a short deployment section pointing to section 9), `CLAUDE.md` (status, architecture, Phase 9 section, Playwright notes about service workers), `docs/architecture.md` (`src/sw.ts`, `src/features/pwa/`, `src/core/pwa/`, dependencies table), `docs/roadmap.md` (status, decisions log), this plan (implementation details, results).
 
 **Acceptance:** the three completion criteria met (with D1's definition), checklists recorded, `pnpm test`, `pnpm lint`, `pnpm build` pass.
@@ -824,7 +824,7 @@ On every tab, after scrolling to the end, the last control is at least 32 px abo
 
 #### Implementation details (Step 10, part 1: local verification, 2026-11-04; reviewed, with the coin pill fix)
 
-**Status:** everything that can be checked on this machine is done and recorded below. Reviewed 2026-11-04: the LCP deviation is accepted, the coin pill fix was approved and made, and the Cloudflare configuration (section 9) is approved. **Not done:** connecting Cloudflare Pages and the first deployment (the configuration is approved, but connecting and deploying wait for an explicit go-ahead), the live `curl -I` header check, and every real-device check. Phase 9 is **not** complete.
+**Status:** everything that can be checked on this machine is done and recorded below. Reviewed 2026-11-04: the LCP deviation is accepted, the coin pill fix was approved and made, and the Cloudflare configuration (section 9) is approved. *Since then (2026-11-04):* Cloudflare Pages was connected and deployed, the live headers were checked, and the Android and Windows device checks ran; see "Custom 404 page", "Production update lifecycle" and "Device checklists" below. iOS/iPadOS is NOT TESTED. Phase 9 is **not** complete.
 
 **Files added or changed** (the three planned in section 9; the only app change is the coin pill fix below):
 - `.node-version`: `24`.
@@ -887,7 +887,7 @@ Run 1's long TBT is the usual first-run outlier (the median rule absorbs it).
 | `/unknown/path`, the old `/characters/reference/koala-design-sheet.png` | 200 = the app's `index.html` (SPA fallback) | default |
 
 - **New finding, not a blocker:** Pages redirects `/index.html` to `/` (its "pretty URL" rule), so the `/index.html` rule in `_headers` only ever applies to that 308. The page itself is served as `/`, which has `no-cache`. The rule is kept as planned (harmless, and correct if the redirect ever changes). Workbox precaches `index.html?__WB_REVISION__=…`, which is redirected to `/?__WB_REVISION__=…`; Workbox follows the redirect and stores a clean copy. Verified below: the worker activates, the precache has the page, and offline launches work behind the redirect.
-- The live check with `curl -I` on the `*.pages.dev` URL is still required after deployment (section 9 step 5).
+- The live check with `curl -I` on the `*.pages.dev` URL was run after deployment (section 9 step 5); results under "Custom 404 page".
 
 **D1 installability checklist** (Chromium via `puppeteer-core` from the Lighthouse npx cache, against the wrangler emulator; a non-incognito profile, because off-the-record contexts only report `in-incognito`):
 
@@ -933,9 +933,9 @@ The deferral, two tabs and the kill switch were covered in Step 4 and nothing to
 **Known limitations, retained:**
 - iPhone SE in a Safari **tab** may need a short scroll before Start (installed app: no scroll). Confirm on a device (checklist).
 - 195 px wide (a phone at 200% page zoom) scrolls sideways (Phase 10 accessibility pass).
-- Only simulated so far: iPhone landscape safe areas and the notch, real notification taps and Android in general, real iOS file sharing.
+- Only simulated so far: iPhone landscape safe areas and the notch, real iOS file sharing (iOS/iPadOS NOT TESTED). Android in general and a real notification tap have since been checked on a device (see "Device checklists").
 
-#### Custom 404 page (2026-11-04, approved; live check pending)
+#### Custom 404 page (2026-11-04, approved; verified in production)
 
 **Why.** The first production check of `https://koa-5cl.pages.dev` found that an unknown `/assets/*` path returned `200 text/html` (the app's `index.html`) with `Cache-Control: public, max-age=31536000, immutable`. Two Pages behaviours combine: without a top-level `404.html`, Pages runs in SPA mode and answers every unknown path with `index.html` and status 200; and `_headers` rules match the requested path, not the file served, so the `/assets/*` rule also applied to that fallback. A tab on an old version asking for a removed hashed file could keep HTML under that URL for a year, and the worker's precache would accept a 200 if a file were ever missing during an install.
 
@@ -960,50 +960,67 @@ The deferral, two tabs and the kill switch were covered in Step 4 and nothing to
 
 Without `dist/404.html` the build check fails as intended. `/404.html` itself is redirected by Pages to `/404` (harmless; nothing links to it). Visible cost: a mistyped URL on a first visit shows the 404 page instead of the app. The row above (`/unknown/path` → 200 SPA fallback) records the state before this change.
 
-**Pending:** live production verification after the next deployment: `curl -I` on a missing `/assets/*` path and an unknown path (expect 404, not `immutable`), `/` (200, `no-cache`) and a valid asset (still `immutable`), plus a quick check that an installed copy still opens and works offline. The emulator's `no-store` on the 404 is not yet confirmed on the live site.
+**Verified in production** after commit `274dd92` was deployed (read-only `curl` checks, 2026-11-04): `/` 200 with `no-cache`; missing `/assets/nope.js` 404 with `no-store`; unknown paths 404 with the custom page and its working link to `/`; real fingerprinted JS and CSS 200 with `immutable`; `/sw.js` and the manifest 200 with `no-cache`. The emulator's `no-store` on the 404 matches the live site. The missing-asset caching bug is fixed.
+
+#### Production update lifecycle (2026-11-04, user-confirmed)
+
+Version A was `0.0.0 (274dd92)` on both devices before Version B (`a839f5e`) went live; one older Windows tab was still on `25ab26e`. Device, Android, Chrome and Windows browser versions were not recorded (unknown).
+
+| Check | Device | Result |
+|---|---|---|
+| Prompt after B went live | Windows laptop, browser tab | ✓ "Koa has an update" appeared after a reload |
+| Later | Windows laptop, browser tab | ✓ hidden; a newly opened tab showed it again (D3: Later lasts until the next launch) |
+| Update | Windows laptop, browser tab | ✓ that tab reloaded into `0.0.0 (a839f5e)` |
+| Other tabs | Windows laptop, browser tab | ✓ an older tab stayed on `25ab26e` (no automatic reload, as designed) until refreshed by hand, then showed B |
+| Data | Windows laptop | ✓ kept (1 coin, 1-day streak) |
+| Focus deferral | Galaxy Note 10+ | ✓ no prompt while the focus session was running; it appeared after pausing |
+| Update | Galaxy Note 10+ | ✓ switched to `0.0.0 (a839f5e)`; data and the paused timer kept |
+| Silent update | Windows laptop, browser tabs (not the installed app; Chrome or Edge not recorded) | ✓ after closing every Koa tab and reopening the site, B loaded directly with no prompt (D3) |
 
 #### Device checklists (to run after deployment; results recorded here)
 
 Use the production `*.pages.dev` URL (HTTPS). "Fresh" means Koa has never been opened in that browser or app. Record ✓ / ✗ and notes, and the device model and OS version.
 
-**Before any device:** `curl -I` on the live URL for `/`, `/sw.js`, `/manifest.webmanifest`, one `/assets/*.js` and `/index.html` (expect the table above), and the build log shows Node 24.x, pnpm 12.14.0 and `check-build: OK`.
+**Before any device:** `curl -I` on the live URL for `/`, `/sw.js`, `/manifest.webmanifest`, one `/assets/*.js` and `/index.html` (expect the table above), and the build log shows Node 24.x, pnpm 12.14.0 and `check-build: OK`. **Done (2026-11-04):** headers as expected (see "Custom 404 page"); build log Node.js 24.22.1, pnpm 12.14.0, `check-build: OK`.
 
-**iPhone (Safari, iOS 16.4+); repeat items 1–4 on iPad if available**
+Results below are user-confirmed (2026-11-04). OS, browser and app versions were not recorded.
 
-| # | Do | Expect | Result |
-|---|---|---|---|
-| 1 | Open the URL in Safari. Settings → "Install Koa" shows the Share steps. Share (on iOS 26 tap ••• first) → Add to Home Screen → Add | The Home Screen icon is Koa's head on cream, named "Koa" | |
-| 2 | Launch from the Home Screen | Koa's splash on cream, then Home; no Safari UI; dark status bar text readable on cream | |
-| 3 | Portrait and landscape on every tab | Nothing under the notch/Dynamic Island or the home indicator; in landscape the nav is a left rail clear of the notch; Start reachable without scrolling | |
-| 4 | Look at coins and Stats in the installed app vs Safari | The installed app starts fresh (D10); note whether Safari's data was carried over | |
-| 5 | Launch once online, then Airplane Mode, swipe the app away, relaunch | Works: fonts and Koa visible, all tabs | |
-| 6 | Offline: Settings → focus 1 min, Start, wait for it to finish in the app | Coins paid; still there after a relaunch | |
-| 7 | Settings → Session notifications on (permission prompt) → 1-min session → switch to another app | A notification may appear if iOS keeps Koa running (not guaranteed). Locked phone: nothing expected. If one appears, tap it: Koa opens | |
-| 8 | Keep screen on (iOS 18.4+ in the app), Sounds on (tap needed) | Switch works or explains; the chime plays | |
-| 9 | Settings → Export | The share sheet opens; Save to Files; the `koa-data-YYYY-MM-DD.json` file opens and contains the data | |
-| 10 | After a second deployment: reopen the app (not during a running focus session) | "Koa has an update" → Update → new version caption in Settings; data intact. During a running focus session: no card | |
-| 11 | iPhone SE (or a small iPhone) in a **Safari tab** | Note whether the short scroll before Start is acceptable | |
-
-**Android (Chrome)**
+**iPhone (Safari, iOS 16.4+); repeat items 1–4 on iPad if available.** **NOT TESTED:** no iPhone or iPad is available. Every row stays open, and the completion criterion "Installs on iPhone" is not yet met.
 
 | # | Do | Expect | Result |
 |---|---|---|---|
-| 1 | Open the URL. Settings → "Install Koa" (button, or the menu wording) → Install | Installed as an app with Koa's icon (maskable, nothing clipped) | |
-| 2 | Launch, then Airplane Mode, close it, relaunch | Works offline on all tabs | |
-| 3 | Session notifications on → 1-min session → switch to another app before it ends | One notification "Focus session done", with the leaf badge in the status bar | |
-| 4 | Tap it (Koa still open in the background) | Koa comes to the front, same tab, no reload | |
-| 5 | Close Koa fully, trigger another notification (if one is still showing, tap it) | Tapping opens Koa | |
-| 6 | System back gesture between tabs | Goes back through the visited tabs | |
-| 7 | After a second deployment | The update card, then Update applies it, data intact | |
+| 1 | Open the URL in Safari. Settings → "Install Koa" shows the Share steps. Share (on iOS 26 tap ••• first) → Add to Home Screen → Add | The Home Screen icon is Koa's head on cream, named "Koa" | NOT TESTED |
+| 2 | Launch from the Home Screen | Koa's splash on cream, then Home; no Safari UI; dark status bar text readable on cream | NOT TESTED |
+| 3 | Portrait and landscape on every tab | Nothing under the notch/Dynamic Island or the home indicator; in landscape the nav is a left rail clear of the notch; Start reachable without scrolling | NOT TESTED |
+| 4 | Look at coins and Stats in the installed app vs Safari | The installed app starts fresh (D10); note whether Safari's data was carried over | NOT TESTED |
+| 5 | Launch once online, then Airplane Mode, swipe the app away, relaunch | Works: fonts and Koa visible, all tabs | NOT TESTED |
+| 6 | Offline: Settings → focus 1 min, Start, wait for it to finish in the app | Coins paid; still there after a relaunch | NOT TESTED |
+| 7 | Settings → Session notifications on (permission prompt) → 1-min session → switch to another app | A notification may appear if iOS keeps Koa running (not guaranteed). Locked phone: nothing expected. If one appears, tap it: Koa opens | NOT TESTED |
+| 8 | Keep screen on (iOS 18.4+ in the app), Sounds on (tap needed) | Switch works or explains; the chime plays | NOT TESTED |
+| 9 | Settings → Export | The share sheet opens; Save to Files; the `koa-data-YYYY-MM-DD.json` file opens and contains the data | NOT TESTED |
+| 10 | After a second deployment: reopen the app (not during a running focus session) | "Koa has an update" → Update → new version caption in Settings; data intact. During a running focus session: no card | NOT TESTED |
+| 11 | iPhone SE (or a small iPhone) in a **Safari tab** | Note whether the short scroll before Start is acceptable | NOT TESTED |
 
-**Desktop**
+**Android (Chrome)**: Samsung Galaxy Note 10+ (Android and Chrome versions not recorded)
 
 | # | Do | Expect | Result |
 |---|---|---|---|
-| 1 | Chrome or Edge: Settings → Install (or the address bar icon) | Opens in its own window; "Install Koa" card hidden there | |
-| 2 | Offline (disconnect), relaunch the installed app | Works on all tabs | |
-| 3 | After a second deployment | The update card, then Update applies it, data intact | |
-| 4 | Safari on macOS (optional): File → Add to Dock | Opens as a web app | |
+| 1 | Open the URL. Settings → "Install Koa" (button, or the menu wording) → Install | Installed as an app with Koa's icon (maskable, nothing clipped) | ✓ install and normal use. The icon's maskable appearance (nothing clipped) was not specifically checked |
+| 2 | Launch, then Airplane Mode, close it, relaunch | Works offline on all tabs | ✓ |
+| 3 | Session notifications on → 1-min session → switch to another app before it ends | One notification "Focus session done", with the leaf badge in the status bar | Delivery ✓. Leaf badge and Koa icon **not verified**: the notification showed a plain bell icon |
+| 4 | Tap it (Koa still open in the background) | Koa comes to the front, same tab, no reload | Tap-to-open confirmed, but whether Koa was in the background or fully closed was not recorded; this specific scenario remains NOT TESTED |
+| 5 | Close Koa fully, trigger another notification (if one is still showing, tap it) | Tapping opens Koa | Tap-to-open confirmed, but whether Koa was in the background or fully closed was not recorded; this specific scenario remains NOT TESTED |
+| 6 | System back gesture between tabs | Goes back through the visited tabs | NOT TESTED |
+| 7 | After a second deployment | The update card, then Update applies it, data intact | ✓ `274dd92` → `a839f5e`: no card while focus ran, card after pausing, Update applied, data and paused timer kept |
+
+**Desktop**: Windows laptop (browser and version not recorded)
+
+| # | Do | Expect | Result |
+|---|---|---|---|
+| 1 | Chrome or Edge: Settings → Install (or the address bar icon) | Opens in its own window; "Install Koa" card hidden there | ✓ install and normal use. Whether the "Install Koa" card is hidden in the installed app was not specifically checked |
+| 2 | Offline (disconnect), relaunch the installed app | Works on all tabs | ✓ |
+| 3 | After a second deployment | The update card, then Update applies it, data intact | ✓ in browser tabs (`274dd92` → `a839f5e`; Later, a second tab, an old tab, the silent update; see "Production update lifecycle"). Not run in the installed app |
+| 4 | Safari on macOS (optional): File → Add to Dock | Opens as a web app | NOT TESTED |
 
 ## 5. Testing and acceptance summary
 
@@ -1073,7 +1090,7 @@ Use the production `*.pages.dev` URL (HTTPS). "Fresh" means Koa has never been o
 
 ## 9. Deployment (Cloudflare Pages)
 
-**Configuration approved (2026-11-04); not connected or deployed yet.** Verified locally in Step 10: the files exist, the build passes, and the headers behave as intended in `wrangler pages dev`. Approved values: Free plan, `szerep/koa`, production branch `main`, root directory `/`, build command `pnpm build`, output directory `dist`, Node 24, `PNPM_VERSION=12.14.0`. Connecting the repository and the first deployment still wait for an explicit go-ahead (and the push to `main`).
+**Configuration approved (2026-11-04); connected and live at `https://koa-5cl.pages.dev`** (deployments `25ab26e`, `274dd92`, now `a839f5e`). Verified locally in Step 10: the files exist, the build passes, and the headers behave as intended in `wrangler pages dev`; then on the live URL with `curl -I`. Approved values: Free plan, `szerep/koa`, production branch `main`, root directory `/`, build command `pnpm build`, output directory `dist`, Node 24, `PNPM_VERSION=12.14.0`. Every deployment, redeployment or settings change still needs an explicit go-ahead (and every push to `main` deploys).
 
 ### Project settings
 
@@ -1144,7 +1161,7 @@ Koa has one page and hash-based tabs (`/#/shop`), so it needs no redirects. `dis
 
 ## 10. Implementation sequence
 
-Steps 1–6 approved and committed (2026-11-03); Steps 7–9 approved and committed (2026-11-04; Step 9's Lighthouse scores move to Step 10); Step 10 in progress: local verification done (2026-11-04), deployment and device checks pending. One step at a time, each verified, documented and approved before the next.
+Steps 1–6 approved and committed (2026-11-03); Steps 7–9 approved and committed (2026-11-04; Step 9's Lighthouse scores move to Step 10); Step 10 in progress: local verification done, deployed, Android and Windows device checks and the update lifecycle pass (2026-11-04); iOS/iPadOS NOT TESTED. One step at a time, each verified, documented and approved before the next.
 
 1. Reference sheet out of the build + build check (approved 2026-11-03)
 2. App icons (approved provisionally 2026-11-03)
@@ -1155,4 +1172,4 @@ Steps 1–6 approved and committed (2026-11-03); Steps 7–9 approved and commit
 7. Notifications through the service worker (approved 2026-11-04)
 8. Export through the share sheet (approved 2026-11-04)
 9. Mobile optimization and performance budget (approved 2026-11-04; Lighthouse scores measured in Step 10)
-10. Cloudflare Pages deployment, device verification, documentation (in progress: local verification done and reviewed 2026-11-04, LCP deviation accepted, coin pill fix made; configuration approved, not connected or deployed; device checks pending)
+10. Cloudflare Pages deployment, device verification, documentation (in progress: local verification done and reviewed 2026-11-04, LCP deviation accepted, coin pill fix made; connected and live, now `a839f5e`; Android and Windows checks and the update lifecycle pass; Android notification badge/icon not verified; iOS/iPadOS NOT TESTED)

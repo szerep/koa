@@ -4,7 +4,7 @@ Koa is a cozy Pomodoro timer with a koala companion. Focus sessions earn **Coins
 
 It's built as a web app for **iPhone first** (it also works on iPad and desktop browsers). It installs as an app (Add to Home Screen on iPhone and iPad, Install in Chrome and Edge) and works offline after the first visit.
 
-> **Status:** early development. Phases 1–8 of 10 are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10 is in progress: the local checks are done (Lighthouse mobile: Performance 92, Accessibility 96, Best Practices 100, median of 3; Accessibility 100 after a coin pill fix; the deployment configuration is verified and approved), while the first deployment and the checks on real devices are still to come. Koa isn't deployed yet. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
+> **Status:** early development. Phases 1–8 of 10 are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10 is in progress: the local checks are done (Lighthouse mobile: Performance 92, Accessibility 96, Best Practices 100, median of 3; Accessibility 100 after a coin pill fix; the deployment configuration is verified and approved). Koa is deployed at **https://koa-5cl.pages.dev** (Cloudflare Pages). On an Android phone (Samsung Galaxy Note 10+, Chrome), installing, offline use, notification delivery and tap-to-open, and updates have been checked. On a Windows laptop, installing, offline use and updates in browser tabs have been checked. iPhone and iPad are **not tested yet** (no device available), so Phase 9 stays open until Koa is confirmed to install on an iPhone. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
 
 ## Features
 
@@ -75,7 +75,7 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 - **The first launch needs the network**, on every platform, before Koa works offline. iOS has no install prompt, so installing there is always Share → Add to Home Screen.
 - **iOS splash screens** cover current iPhones (portrait) and iPads (portrait and landscape). Other devices show a plain launch screen.
 - **Small phones and page zoom:** in a Safari tab on an iPhone SE (with the toolbars showing) Home needs a short scroll before Start; the installed app doesn't. In phone landscape the navigation moves to a rail on the left. Page zoom down to a 320 px wide layout works; a phone at 200% page zoom (about 195 px) scrolls sideways.
-- **Not verified yet** (Phase 9 Step 10, together with the first deployment): physical-device checks on iPhone, iPad and Android, including landscape safe areas around the notch, sharing a file from the installed iPhone app, and tapping a notification (Android testing hasn't started). Lighthouse's simulated mobile LCP is 3.1 s, over the 2.5 s target in the performance budget. The scores themselves pass, and this is an accepted, documented deviation: getting under 2.5 s would need structural changes (see the Phase 9 plan).
+- **Not tested yet on iPhone or iPad** (Phase 9 Step 10; no device available): installing, the splash screen, offline use, landscape safe areas around the notch, sharing a file from the installed iPhone app, notifications and updates. On Android the notification's leaf badge and Koa icon aren't verified (a plain bell icon showed during testing), and the system back gesture isn't tested. Lighthouse's simulated mobile LCP is 3.1 s, over the 2.5 s target in the performance budget. The scores themselves pass, and this is an accepted, documented deviation: getting under 2.5 s would need structural changes (see the Phase 9 plan).
 - Data lives only in this browser. There are no accounts or sync.
 
 ## Roadmap
@@ -90,7 +90,7 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 | 6 | Shop and customization | ✅ |
 | 7 | Koa's personality and interactions | ✅ |
 | 8 | Statistics and settings (custom durations, daily goal, stats and streaks, keep screen on, notifications, sounds, export and reset) | ✅ |
-| 9 | PWA, offline support, mobile optimization (Steps 1–6 of 10 done; next: notifications through the service worker) | In progress |
+| 9 | PWA, offline support, mobile optimization (Steps 1–9 of 10 done; Step 10: deployed, Android and Windows checks pass, iPhone and iPad not tested) | In progress |
 | 10 | Testing and polish | Planned |
 
 ## Tech stack
@@ -167,9 +167,9 @@ More detail is in [`docs/architecture.md`](docs/architecture.md).
 - [Settings plan (Phase 8)](docs/phase-8/settings-plan.md)
 - [PWA and mobile plan (Phase 9)](docs/phase-9/pwa-plan.md): steps, decisions, deployment to Cloudflare Pages
 
-## Deployment (configured and approved, not deployed yet)
+## Deployment
 
-Koa will be hosted on **Cloudflare Pages** (Free plan) from this GitHub repository: production branch `main`, build command `pnpm build`, output directory `dist`, Node 24 and pnpm 12.14.0 pinned, and caching headers that keep `index.html` and `sw.js` fresh. The repository is ready for it: `.node-version`, the `packageManager` field and `public/_headers` are in place and were checked with Cloudflare's local emulator (`wrangler pages dev`). In the Pages project, also set the `PNPM_VERSION` environment variable to `12.14.0`. It isn't connected yet; the steps are in the Phase 9 plan, section 9. No paid services are needed.
+Koa is hosted on **Cloudflare Pages** (Free plan) at https://koa-5cl.pages.dev, from this GitHub repository (every push to `main` deploys production): production branch `main`, build command `pnpm build`, output directory `dist`, Node 24 and pnpm 12.14.0 pinned, and caching headers that keep `index.html` and `sw.js` fresh. The repository is ready for it: `.node-version`, the `packageManager` field and `public/_headers` are in place and were checked with Cloudflare's local emulator (`wrangler pages dev`). In the Pages project, the `PNPM_VERSION` environment variable is set to `12.14.0`. A self-contained `404.html` gives unknown paths a real 404. Setup steps and rollback are in the Phase 9 plan, section 9. No paid services are needed.
 
 ## License
 
