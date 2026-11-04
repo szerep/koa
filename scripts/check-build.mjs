@@ -9,7 +9,10 @@
 // With KOA_SW_KILL_SWITCH=1 (the emergency kill switch build, Step 4) sw.js must instead be the
 // plugin's self-destroying worker, and the check says so loudly.
 //
-// The rules live in `checkFiles`, `checkPrecache`, `checkSplash` and `checkBudget`, pure functions tested in
+// It also requires the top-level 404.html that keeps Cloudflare Pages from serving index.html for
+// unknown paths (Step 10).
+//
+// The rules live in `checkFiles`, `checkNotFoundPage`, `checkPrecache`, `checkSplash` and `checkBudget`, pure functions tested in
 // check-build.test.ts.
 // Sizes use decimal units (1 kB = 1000 bytes), like Vite's build output.
 
@@ -140,6 +143,19 @@ export function checkFiles(files) {
     if (IMAGE_EXT.test(name)) images.push({ path, bytes })
   }
   return { errors, images }
+}
+
+/**
+ * Requires the top-level 404.html (Phase 9 Step 10). Without it Cloudflare Pages switches to its
+ * single-page-app fallback and answers every unknown path, missing /assets/* files included, with
+ * index.html and status 200 (which then gets the immutable /assets/* cache header).
+ * @param {{ path: string }[]} files paths relative to dist/, with "/" separators
+ * @returns {string[]} the errors
+ */
+export function checkNotFoundPage(files) {
+  return files.some((f) => f.path === '404.html')
+    ? []
+    : ['404.html: missing (without it Cloudflare Pages serves index.html with status 200 for unknown paths)']
 }
 
 /**
@@ -432,6 +448,7 @@ function main(argv) {
   }
 
   const { errors, images } = checkFiles(files)
+  errors.push(...checkNotFoundPage(files))
 
   const killSwitch = process.env.KOA_SW_KILL_SWITCH === '1'
   const sw = files.find((f) => f.path === 'sw.js')

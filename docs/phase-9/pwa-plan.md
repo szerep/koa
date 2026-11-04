@@ -1,6 +1,6 @@
 # Phase 9 — PWA and mobile optimization plan
 
-**Status:** plan approved (2026-11-03), with the decisions in section 8. **Steps 1–3 approved (2026-11-03; the icons provisionally, their composition may be revisited in a polish pass; Step 3 including the direct `workbox-window` dev dependency). Steps 4–6 approved (2026-11-03); Steps 1–6 are committed together. Steps 7 (notifications through the service worker) and 8 (export through the share sheet) approved 2026-11-04. Step 9 (mobile optimization and the performance budget) approved 2026-11-04 with one open item: the Lighthouse rows are not measured yet and move to Step 10. Steps 7–9 committed together 2026-11-04. Step 10 is in progress (2026-11-04): the local verification is done and reviewed (Lighthouse 92 / 96 / 100; LCP 3.1 s vs the ≤ 2.5 s target, accepted as a documented deviation; the coin pill accessibility fix made and verified; deployment files added; headers verified in Cloudflare's local emulator; the Cloudflare configuration approved). Cloudflare Pages is not connected or deployed yet, and no real-device check has been run.** Each step below is implemented, verified and documented on its own, then waits for explicit approval, like Phase 8.
+**Status:** plan approved (2026-11-03), with the decisions in section 8. **Steps 1–3 approved (2026-11-03; the icons provisionally, their composition may be revisited in a polish pass; Step 3 including the direct `workbox-window` dev dependency). Steps 4–6 approved (2026-11-03); Steps 1–6 are committed together. Steps 7 (notifications through the service worker) and 8 (export through the share sheet) approved 2026-11-04. Step 9 (mobile optimization and the performance budget) approved 2026-11-04 with one open item: the Lighthouse rows are not measured yet and move to Step 10. Steps 7–9 committed together 2026-11-04. Step 10 is in progress (2026-11-04): the local verification is done and reviewed (Lighthouse 92 / 96 / 100; LCP 3.1 s vs the ≤ 2.5 s target, accepted as a documented deviation; the coin pill accessibility fix made and verified; deployment files added; headers verified in Cloudflare's local emulator; the Cloudflare configuration approved). Cloudflare Pages is now connected and the first production deployment is live (`https://koa-5cl.pages.dev`, commit `25ab26e`; HTTP and browser smoke checks pass). A custom 404 page (see Step 10) is approved and verified locally; its live verification is pending. No real-device check has been run yet.** Each step below is implemented, verified and documented on its own, then waits for explicit approval, like Phase 8.
 
 ## 1. Goals and scope
 
@@ -935,6 +935,33 @@ The deferral, two tabs and the kill switch were covered in Step 4 and nothing to
 - 195 px wide (a phone at 200% page zoom) scrolls sideways (Phase 10 accessibility pass).
 - Only simulated so far: iPhone landscape safe areas and the notch, real notification taps and Android in general, real iOS file sharing.
 
+#### Custom 404 page (2026-11-04, approved; live check pending)
+
+**Why.** The first production check of `https://koa-5cl.pages.dev` found that an unknown `/assets/*` path returned `200 text/html` (the app's `index.html`) with `Cache-Control: public, max-age=31536000, immutable`. Two Pages behaviours combine: without a top-level `404.html`, Pages runs in SPA mode and answers every unknown path with `index.html` and status 200; and `_headers` rules match the requested path, not the file served, so the `/assets/*` rule also applied to that fallback. A tab on an old version asking for a removed hashed file could keep HTML under that URL for a year, and the worker's precache would accept a 200 if a file were ever missing during an install.
+
+**Change.** `public/404.html`, a self-contained page (no scripts, web fonts or external resources; colors copied from `tokens.css`; an `<h1>` "Page not found", a short explanation and a "Go to Koa" link to `/`; `noindex`). Its presence turns off Pages' SPA fallback, so **missing assets and unknown paths now get a real 404** instead of the app's HTML. `scripts/check-build.mjs` gained `checkNotFoundPage`: the build fails if `dist/404.html` is missing (2 new tests; budgets and precache rules unchanged). `_headers`, `src/sw.ts`, the Vite config and app routing are unchanged.
+
+**Unchanged by design.** The precache is still exactly **18 entries** (the glob lists `index.html` explicitly, so `404.html` is never precached; the existing check already rejects it). The worker still answers every navigation with the precached `index.html`, so installed users never see the 404 page. Koa needs no SPA fallback: one page, hash tabs, `start_url`/`scope`/`id` `/`, no shortcuts or share target, notification taps open `/`.
+
+**Verified locally** (`pnpm test` 627 passing, `pnpm lint`, `pnpm build` with `check-build: OK`; then `wrangler pages dev dist` and Playwright at 390×844 in fresh contexts):
+
+| Check | Result |
+|---|---|
+| `/`, `/sw.js`, `/manifest.webmanifest` | 200, `no-cache` (unchanged) |
+| `/index.html` | 308 → `/` (unchanged) |
+| Valid `/assets/*` JS and CSS | 200, `public, max-age=31536000, immutable` (unchanged) |
+| Icons, favicon | 200, Pages default `max-age=0, must-revalidate` (unchanged) |
+| Missing `/assets/nope.js`, `/does-not-exist` | **404, `Cache-Control: no-store`**, the 404 page (the `/assets/*` rule isn't applied to the 404 in the emulator) |
+| First visit to an unknown path | 404 page; "Go to Koa" opens the app; keyboard focus ring visible |
+| Hash tabs `#/home`, `#/shop`, `#/stats`, `#/settings` | each opens with the right tab current |
+| Manifest, worker | manifest 200, valid, 3 icons; worker scope `/`, precache 18 entries, no `404.html` |
+| Worker in control, unknown path | served `index.html` **from the worker** (200), the hash tab opened |
+| Offline reload | Shop tab and Koa frames from the cache |
+
+Without `dist/404.html` the build check fails as intended. `/404.html` itself is redirected by Pages to `/404` (harmless; nothing links to it). Visible cost: a mistyped URL on a first visit shows the 404 page instead of the app. The row above (`/unknown/path` → 200 SPA fallback) records the state before this change.
+
+**Pending:** live production verification after the next deployment: `curl -I` on a missing `/assets/*` path and an unknown path (expect 404, not `immutable`), `/` (200, `no-cache`) and a valid asset (still `immutable`), plus a quick check that an installed copy still opens and works offline. The emulator's `no-store` on the 404 is not yet confirmed on the live site.
+
 #### Device checklists (to run after deployment; results recorded here)
 
 Use the production `*.pages.dev` URL (HTTPS). "Fresh" means Koa has never been opened in that browser or app. Record ✓ / ✗ and notes, and the device model and OS version.
@@ -1102,7 +1129,7 @@ Vite copies `public/_headers` to `dist/_headers`, which Cloudflare Pages applies
 
 ### Routing
 
-Koa has one page and hash-based tabs (`/#/shop`), so it needs no redirects. Without a `404.html` in `dist`, Cloudflare Pages serves `index.html` for unknown paths, which is fine.
+Koa has one page and hash-based tabs (`/#/shop`), so it needs no redirects. `dist/404.html` (from `public/404.html`, required by the build check) turns off Pages' SPA fallback, so unknown paths, including missing `/assets/*` files, return a real 404 instead of `index.html` with status 200 (Step 10, "Custom 404 page"). The worker still serves `index.html` for every navigation once it's in control.
 
 ### Deploying, step by step (Step 10)
 

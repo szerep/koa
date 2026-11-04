@@ -7,6 +7,7 @@ import {
   SPLASH_LIMITS,
   checkBudget,
   checkFiles,
+  checkNotFoundPage,
   checkPrecache,
   checkSplash,
   checkWorker,
@@ -121,6 +122,20 @@ describe('precacheUrls', () => {
   })
 })
 
+describe('checkNotFoundPage', () => {
+  it('accepts a build with the top-level 404.html', () => {
+    expect(checkNotFoundPage([file('index.html'), file('404.html')])).toEqual([])
+  })
+
+  it('fails without it, including when it only exists in a subfolder', () => {
+    for (const files of [[file('index.html')], [file('index.html'), file('assets/404.html')]]) {
+      const errors = checkNotFoundPage(files)
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toContain('404.html: missing')
+    }
+  })
+})
+
 describe('checkPrecache', () => {
   /** A build like today's: shell, hashed assets, the 4 frames, plus files that are never precached. */
   const build = [
@@ -198,11 +213,12 @@ describe('checkPrecache', () => {
   })
 
   it('rejects anything else that is not expected', () => {
-    const files = [...build, file('robots.txt'), file('characters/koa_new_pose.webp')]
-    const { errors } = checkPrecache([...good, 'robots.txt', 'characters/koa_new_pose.webp'], files)
+    const files = [...build, file('robots.txt'), file('characters/koa_new_pose.webp'), file('404.html')]
+    const { errors } = checkPrecache([...good, 'robots.txt', 'characters/koa_new_pose.webp', '404.html'], files)
     expect(errors).toEqual([
       'precache: robots.txt is not an expected entry',
       'precache: characters/koa_new_pose.webp is not an expected entry',
+      'precache: 404.html is not an expected entry',
     ])
   })
 
