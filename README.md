@@ -4,7 +4,7 @@ Koa is a cozy Pomodoro timer with a koala companion. Focus sessions earn **Coins
 
 It's built as a web app for **iPhone first** (it also works on iPad and desktop browsers). It installs as an app (Add to Home Screen on iPhone and iPad, Install in Chrome and Edge) and works offline after the first visit.
 
-> **Status:** early development. Phases 1–8 of 10 are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10, the first deployment and the checks on real devices (including the Lighthouse scores), is next. Koa isn't deployed yet. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
+> **Status:** early development. Phases 1–8 of 10 are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10 is in progress: the local checks are done (Lighthouse mobile: Performance 92, Accessibility 96, Best Practices 100, median of 3; Accessibility 100 after a coin pill fix; the deployment configuration is verified and approved), while the first deployment and the checks on real devices are still to come. Koa isn't deployed yet. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
 
 ## Features
 
@@ -75,7 +75,7 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 - **The first launch needs the network**, on every platform, before Koa works offline. iOS has no install prompt, so installing there is always Share → Add to Home Screen.
 - **iOS splash screens** cover current iPhones (portrait) and iPads (portrait and landscape). Other devices show a plain launch screen.
 - **Small phones and page zoom:** in a Safari tab on an iPhone SE (with the toolbars showing) Home needs a short scroll before Start; the installed app doesn't. In phone landscape the navigation moves to a rail on the left. Page zoom down to a 320 px wide layout works; a phone at 200% page zoom (about 195 px) scrolls sideways.
-- **Not verified yet** (Phase 9 Step 10, together with the first deployment): physical-device checks on iPhone, iPad and Android, including landscape safe areas around the notch, sharing a file from the installed iPhone app, and tapping a notification (Android testing hasn't started). The Lighthouse Performance, Accessibility and Best Practices scores haven't been measured yet.
+- **Not verified yet** (Phase 9 Step 10, together with the first deployment): physical-device checks on iPhone, iPad and Android, including landscape safe areas around the notch, sharing a file from the installed iPhone app, and tapping a notification (Android testing hasn't started). Lighthouse's simulated mobile LCP is 3.1 s, over the 2.5 s target in the performance budget. The scores themselves pass, and this is an accepted, documented deviation: getting under 2.5 s would need structural changes (see the Phase 9 plan).
 - Data lives only in this browser. There are no accounts or sync.
 
 ## Roadmap
@@ -167,9 +167,9 @@ More detail is in [`docs/architecture.md`](docs/architecture.md).
 - [Settings plan (Phase 8)](docs/phase-8/settings-plan.md)
 - [PWA and mobile plan (Phase 9)](docs/phase-9/pwa-plan.md): steps, decisions, deployment to Cloudflare Pages
 
-## Deployment (planned)
+## Deployment (configured and approved, not deployed yet)
 
-Koa will be hosted on **Cloudflare Pages** (Free plan) from this GitHub repository: production branch `main`, build command `pnpm build`, output directory `dist`, Node 24 and pnpm 12.14.0 pinned, and caching headers that keep `index.html` and `sw.js` fresh. It isn't connected yet; that happens in Phase 9 Step 10, together with device testing. No paid services are needed.
+Koa will be hosted on **Cloudflare Pages** (Free plan) from this GitHub repository: production branch `main`, build command `pnpm build`, output directory `dist`, Node 24 and pnpm 12.14.0 pinned, and caching headers that keep `index.html` and `sw.js` fresh. The repository is ready for it: `.node-version`, the `packageManager` field and `public/_headers` are in place and were checked with Cloudflare's local emulator (`wrangler pages dev`). In the Pages project, also set the `PNPM_VERSION` environment variable to `12.14.0`. It isn't connected yet; the steps are in the Phase 9 plan, section 9. No paid services are needed.
 
 ## License
 

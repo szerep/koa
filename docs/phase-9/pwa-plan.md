@@ -1,6 +1,6 @@
 # Phase 9 — PWA and mobile optimization plan
 
-**Status:** plan approved (2026-11-03), with the decisions in section 8. **Steps 1–3 approved (2026-11-03; the icons provisionally, their composition may be revisited in a polish pass; Step 3 including the direct `workbox-window` dev dependency). Steps 4–6 approved (2026-11-03); Steps 1–6 are committed together. Steps 7 (notifications through the service worker) and 8 (export through the share sheet) approved 2026-11-04. Step 9 (mobile optimization and the performance budget) approved 2026-11-04 with one open item: the Lighthouse rows are not measured yet and move to Step 10. Steps 7–9 committed together 2026-11-04. Step 10 is next, not started.** Each step below is implemented, verified and documented on its own, then waits for explicit approval, like Phase 8.
+**Status:** plan approved (2026-11-03), with the decisions in section 8. **Steps 1–3 approved (2026-11-03; the icons provisionally, their composition may be revisited in a polish pass; Step 3 including the direct `workbox-window` dev dependency). Steps 4–6 approved (2026-11-03); Steps 1–6 are committed together. Steps 7 (notifications through the service worker) and 8 (export through the share sheet) approved 2026-11-04. Step 9 (mobile optimization and the performance budget) approved 2026-11-04 with one open item: the Lighthouse rows are not measured yet and move to Step 10. Steps 7–9 committed together 2026-11-04. Step 10 is in progress (2026-11-04): the local verification is done and reviewed (Lighthouse 92 / 96 / 100; LCP 3.1 s vs the ≤ 2.5 s target, accepted as a documented deviation; the coin pill accessibility fix made and verified; deployment files added; headers verified in Cloudflare's local emulator; the Cloudflare configuration approved). Cloudflare Pages is not connected or deployed yet, and no real-device check has been run.** Each step below is implemented, verified and documented on its own, then waits for explicit approval, like Phase 8.
 
 ## 1. Goals and scope
 
@@ -728,8 +728,8 @@ That one automatic reload comes from the plugin and is the deliberate exception 
 | Character frame | ≤ 150 kB | largest 111.8 kB | `checkFiles` (Step 1) |
 | Icons / splash | own limits | unchanged, all within | `checkFiles` / `checkSplash` (Steps 2, 5) |
 | Reference sheet in `dist/` | never | none | `checkFiles` (Step 1) |
-| LCP / CLS | ≤ 2.5 s / ≤ 0.05 | **~2.09 s / 0.0002** (Playwright approximation, see below) | measured, not a build rule |
-| Lighthouse Performance / Accessibility / Best Practices | ≥ 90 / ≥ 95 / ≥ 95 | **not measured** (moved to Step 10, see below) | measured, not a build rule |
+| LCP / CLS | ≤ 2.5 s / ≤ 0.05 | Step 9: ~2.09 s / 0.0002 (Playwright approximation). **Lighthouse (Step 10): LCP 3.1 s ✗ (target not met; accepted deviation 2026-11-04) / CLS 0.0002 ✓** (median of 3; rationale in Step 10) | measured, not a build rule |
+| Lighthouse Performance / Accessibility / Best Practices | ≥ 90 / ≥ 95 / ≥ 95 | **92 / 96 / 100** (median of 3, Lighthouse 13.6.0, measured in Step 10; Accessibility 100 in three runs after the coin pill fix) | measured, not a build rule |
 
 **What "entry JS" means.** The build used to print one "JS gzip" figure, the sum of **every** `.js` file in `dist/`: 159.6 kB after Step 8. That sum is the entry bundle (151.2 kB) plus the `workbox-window` chunk that `virtual:pwa-register` loads after launch (2.2 kB) plus `sw.js`, which runs in the worker's own thread (6.2 kB). The budget row is the entry JS, as in D12 (the 146 kB baseline was the only bundle at the time). The check now prints all three, and their total, on every build, so the 159.6 kB total stays visible:
 
@@ -822,6 +822,162 @@ On every tab, after scrolling to the end, the last control is at least 32 px abo
 
 **Risks:** I can't operate a real iPhone or Android device; those checks depend on you running them. Simulators and Playwright's WebKit don't reproduce Home Screen behavior.
 
+#### Implementation details (Step 10, part 1: local verification, 2026-11-04; reviewed, with the coin pill fix)
+
+**Status:** everything that can be checked on this machine is done and recorded below. Reviewed 2026-11-04: the LCP deviation is accepted, the coin pill fix was approved and made, and the Cloudflare configuration (section 9) is approved. **Not done:** connecting Cloudflare Pages and the first deployment (the configuration is approved, but connecting and deploying wait for an explicit go-ahead), the live `curl -I` header check, and every real-device check. Phase 9 is **not** complete.
+
+**Files added or changed** (the three planned in section 9; the only app change is the coin pill fix below):
+- `.node-version`: `24`.
+- `public/_headers`: exactly the section 9 rules. Vite copies it to `dist/_headers`; it isn't in the precache (`sw.js` doesn't mention it, and `checkPrecache` rejects it).
+- `package.json`: `"packageManager": "pnpm@12.14.0"`.
+- `pnpm-lock.yaml`: pnpm 12 records the `packageManager` pin as a separate first YAML document (`packageManagerDependencies: pnpm 12.14.0`, plus the platform binaries' integrity hashes). This is pnpm's own reaction to the field: 158 lines added, none of the dependency entries changed. `pnpm install --frozen-lockfile` (what CI runs) passes: "Lockfile is up to date".
+- `src/ui/CoinPill.tsx` and the new `src/ui/CoinPill.test.tsx` (the accessibility fix). No other application code, styles or build check changed.
+
+**Cloudflare docs re-checked (Context7, 2026-11-04):** the plan's assumptions hold. Build image v3 defaults to Node 22.16.0 and v2 to Node 18, so pinning is needed either way. `.node-version` or `NODE_VERSION` sets Node. `PNPM_VERSION` sets pnpm, and **v3 doesn't detect pnpm from `pnpm-lock.yaml`**, so `PNPM_VERSION` is required. `_headers` "override what Cloudflare ordinarily sends". Without a `404.html`, Pages serves `/` for unknown paths (SPA mode).
+
+**Lighthouse** (D1 (c)): Lighthouse **13.6.0** via `npx` (not a dependency), headless Chrome 157, mobile preset with simulated throttling, against `pnpm preview` (`http://localhost:4173/`), the plan's command run three times in a row (reports kept outside the repo):
+
+| Run | Performance | Accessibility | Best Practices | FCP | LCP | TBT | CLS | Speed Index |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 76 | 96 | 100 | 0.8 s | 3.4 s | 630 ms | 0.0002 | 2.0 s |
+| 2 | 92 | 96 | 100 | 0.8 s | 3.1 s | 160 ms | 0.0002 | 1.0 s |
+| 3 | 93 | 96 | 100 | 0.8 s | 3.1 s | 140 ms | 0.0002 | 1.0 s |
+| **Median** | **92** (≥ 90 ✓) | **96** (≥ 95 ✓) | **100** (≥ 95 ✓) | 0.8 s | **3.1 s** (budget ≤ 2.5 s ✗) | 160 ms | 0.0002 (≤ 0.05 ✓) | 1.0 s |
+
+Run 1's long TBT is the usual first-run outlier (the median rule absorbs it).
+
+- **The one failing accessibility audit:** `aria-prohibited-attr`. The coin pill (`src/ui/CoinPill.tsx`) was a `<div aria-label="N coins">` with no role, and its visible number is `aria-hidden`. Screen readers may ignore a label on a role-less `div`, so the balance might not be announced at all. **Fixed (approved 2026-11-04), see "Coin pill accessibility fix" below.**
+- **LCP misses the Step 9 budget row (3.1 s vs ≤ 2.5 s, "Lighthouse mobile").** The D1 criterion (the three scores) is met; the D12 LCP row isn't. Investigation (each variant 3 Lighthouse runs, on scratch copies of `dist/` outside the repo):
+
+  | Variant | Performance | LCP | Conclusion |
+  |---|---|---|---|
+  | As built | 92 | 3.1 s | — |
+  | `fetchpriority="high"` on the frame preload (Lighthouse's own suggestion) | 87–88 | **3.4 s** | Worse: the frame then competes with the entry JS, which the first paint waits for (Step 9's reasoning confirmed). Rejected |
+  | Blink frame blocked (upper bound of loading it later) | 92 | 3.0–3.1 s | No effect. Rejected |
+  | Both 1024 px frames replaced by the 512 px files (upper bound of a smaller LCP image, 156 kB less) | 93 | 2.8 s | Still over 2.5 s, and visibly softer art on phones. Not proposed |
+
+  **Cause:** in the unthrottled trace, the LCP (Koa's frame) paints at 669 ms, at the same moment as the first contentful paint. Lighthouse's simulation (Lantern) replays every request and main-thread task before that moment at 4× CPU on a 1.6 Mbps link. Most of that time is Koa being rendered by JavaScript (the 151 kB gzip entry bundle must download and run before anything is drawn), plus a cold-start pause in a freshly launched Chrome. A direct test showed it: the same page painted at 244 ms in a warm browser and ~600 ms later in a just-launched one. Lighthouse launches a new Chrome for every run. No small, safe change brings it under 2.5 s. Reaching it would take structural work outside Phase 9's scope, for example pre-rendering the Home shell into `index.html` or a much smaller entry bundle.
+
+  **Decision (2026-11-04): accepted as a documented deviation.** The target stays **≤ 2.5 s** and is **not met**: the measured median is **3.1 s** (runs 3.4 / 3.1 / 3.1 s). Structural optimization is deferred, not attempted in this release, because:
+  - the D1 completion criteria (Performance ≥ 90, Accessibility and Best Practices ≥ 95) pass;
+  - the real first paint is fast (669 ms unthrottled, ~2.09 s under Step 9's Playwright throttling), and the gap to 3.1 s comes mostly from Lighthouse's simulation of a JavaScript-rendered first paint in a cold browser;
+  - the only fixes that would reach 2.5 s (a pre-rendered Home shell, or a much smaller entry bundle) are architectural changes with real risk to the timer, Koa and the update flow, out of scope for a release-verification step.
+
+  Revisit if the app grows, or as a Phase 10+ performance item. The budget and the build check are unchanged.
+
+**Coin pill accessibility fix** (approved 2026-11-04, the only code change in Step 10):
+- `src/ui/CoinPill.tsx`: the `aria-label` on the role-less `div` was removed. Inside the pill, after the visible number, there's now `<span className="visually-hidden">{N} coins</span>` (the existing `.visually-hidden` utility from `base.css`). It shows the **actual** balance (`coins`), as the label did, not the count-up number, so screen readers never hear intermediate values. The visible number and the coin glyph stay `aria-hidden`. `data-coin-target`, the count-up/down and the bump animation are unchanged. No CSS, coin calculation, reward, persistence or other component changed.
+- **Tests:** `src/ui/CoinPill.test.tsx` (new, 4 tests, rendered with `react-dom/server`, already a dependency, so no DOM test library was added): no `aria-label`; the hidden text is "N coins" with the formatted balance; with the `aria-hidden` parts removed, "N coins" is the only exposed text (the glyph and the animated number are hidden); "0 coins" and "25 coins"; `data-coin-target` and the visible number are intact. Against the old markup, the first two would fail (an `aria-label`, and no exposed text). `pnpm test`: 625 tests in 38 files.
+- **Verified in the production build** (`pnpm preview`, fresh contexts):
+  - Lighthouse 13.6.0 accessibility, three runs: **100 / 100 / 100**, `aria-prohibited-attr` passes, no failing audits. These are accessibility-only runs after the fix; the full three-category medians above (92 / 96 / 100) are the earlier record.
+  - Chrome's accessibility tree for the pill: a single text node, "0 coins".
+  - Pixel diff at 390×844 @3 against the screenshot taken before the change: **0 differing pixels** in the pill and in the whole top bar (pill box 62×40 px either way).
+
+**Cloudflare behavior, emulated locally** (`npx wrangler@4 pages dev dist`, wrangler 4.157.0, the official local Pages emulator, not a dependency; "Parsed 5 valid header rules"):
+
+| Path | Status | `Cache-Control` |
+|---|---|---|
+| `/` | 200 | `no-cache` |
+| `/sw.js` | 200 `application/javascript` | `no-cache` |
+| `/manifest.webmanifest` | 200 `application/manifest+json` | `no-cache` |
+| `/assets/index-*.js`, `/assets/*.woff2` | 200 | `public, max-age=31536000, immutable` |
+| `/characters/*.webp`, `/icons/*.png`, `/splash/*.jpg`, `/favicon.svg` | 200 | Cloudflare's default `public, max-age=0, must-revalidate` (as planned: revalidate with ETag) |
+| `/index.html` | **308 → `/`** | `no-cache` |
+| `/_headers` | 200 = the app's `index.html` (the file itself is never served) | default |
+| `/unknown/path`, the old `/characters/reference/koala-design-sheet.png` | 200 = the app's `index.html` (SPA fallback) | default |
+
+- **New finding, not a blocker:** Pages redirects `/index.html` to `/` (its "pretty URL" rule), so the `/index.html` rule in `_headers` only ever applies to that 308. The page itself is served as `/`, which has `no-cache`. The rule is kept as planned (harmless, and correct if the redirect ever changes). Workbox precaches `index.html?__WB_REVISION__=…`, which is redirected to `/?__WB_REVISION__=…`; Workbox follows the redirect and stores a clean copy. Verified below: the worker activates, the precache has the page, and offline launches work behind the redirect.
+- The live check with `curl -I` on the `*.pages.dev` URL is still required after deployment (section 9 step 5).
+
+**D1 installability checklist** (Chromium via `puppeteer-core` from the Lighthouse npx cache, against the wrangler emulator; a non-incognito profile, because off-the-record contexts only report `in-incognito`):
+
+| Item | Result |
+|---|---|
+| (a) DevTools installability, Chrome 157 | `Page.getInstallabilityErrors` **[]**, `Page.getAppManifest` errors **[]** |
+| (a) the same in Edge 156 | **[]** and **[]** |
+| Manifest fields | `id` `/`, `name`/`short_name` "Koa", `start_url` `/`, `scope` `/`, `display` `standalone`, `theme_color` and `background_color` `#f9eee1`, `lang` `en` |
+| Icons, including maskable | 192 (`any`), 512 (`any`), 512 (`maskable`): each 200, `image/png`, exact pixel size. Badge 96×96 |
+| `apple-touch-icon` | `/icons/apple-touch-icon-180.png`, 200, 180×180 |
+| Theme color, viewport | `theme-color` `#f9eee1`; `width=device-width, initial-scale=1.0, viewport-fit=cover` (pinch zoom allowed) |
+| iOS meta | `apple-mobile-web-app-capable` yes, status bar `default`, 30 startup images linked |
+| Service worker | scope `/`, `/sw.js` **activated**; the first visit isn't controlled (by design), the reload is |
+| Precache | one cache `koa-precache-v2-…`, exactly **18 entries**; no icons, splash, `reference/`, source maps, `sw.js` or `_headers` |
+| Works offline / the worker controls `start_url` | offline `/` → 200 **from the service worker**, fonts loaded, both Koa frames decoded |
+| Reference sheet | not in `dist/` (build check), not precached, and its old URL returns the app page |
+
+**Offline** (fresh incognito context, 390×844 @3, emulator):
+- The first load installs the worker (uncontrolled). Offline, Home, Shop, Stats and Settings all load **from the service worker** with Fredoka and Nunito Sans and Koa's frames (Settings has none), with no horizontal scroll. Offline `/some/deep/link?from=homescreen` gets the app.
+- Real-time completion offline: a seeded running focus session ending 4 s after load completed, paid `focus:step10-seed` = 25 coins (pill "25 coins"), moved to the short break, and survived an offline reload.
+- **0 console errors or warnings and 0 failed requests.**
+
+**Update flow** (two production builds that differ only in the version caption, A `aaaaaaa` and B `bbbbbbb`, `check-build: OK` for both; a throwaway static server on `localhost:4180` that switches builds and mimics what wrangler showed: the `_headers` rules, the 308s and the SPA fallback):
+
+| Check | Result |
+|---|---|
+| A loaded and controlled | caption "Koa 0.0.0 (aaaaaaa)" |
+| Focus session running, B deployed, relaunch | B's worker **waiting**, **no prompt** (D3) |
+| Pause | prompt "Koa has an update" shown |
+| Later | hidden; shown again on the next launch |
+| Update | one reload into B: caption "Koa 0.0.0 (bbbbbbb)", no prompt, `koa:v1` **byte-identical** (the paused session) |
+| Cache invalidation | one precache, 18 entries, only B's `index-*.js`; A's is gone |
+| Console | 0 errors or warnings, 0 failed requests |
+
+The deferral, two tabs and the kill switch were covered in Step 4 and nothing touching them changed, so they weren't repeated.
+
+**Viewports** (fresh contexts, emulator, all four tabs): 390×844, 820×1180 and 1440×900 have no horizontal scroll, fonts loaded and Koa's frames decoded, with 0 console problems. Start sits 90 px and 154 px clear of the bottom nav (as in Step 9). At 1440 the nav is the left rail.
+
+**Console caveat:** while offline, Chrome and Edge themselves log `Error while trying to use the following icon from the Manifest: …/icons/icon-192.png` (plus the failed request). The browser re-fetches the manifest icon, and icons are deliberately not precached (Step 3; the OS stores them at install). It isn't from Koa's code, and it doesn't appear online or in the app's own checks. Recorded as known; no change to the approved precache list.
+
+**Tooling note:** the Playwright MCP browser was locked by another process during this step, so the browser checks used `puppeteer-core` (already in the npx cache from Lighthouse) with the installed Chrome and Edge. Same engine and the same checks; nothing was added to the project.
+
+**Known limitations, retained:**
+- iPhone SE in a Safari **tab** may need a short scroll before Start (installed app: no scroll). Confirm on a device (checklist).
+- 195 px wide (a phone at 200% page zoom) scrolls sideways (Phase 10 accessibility pass).
+- Only simulated so far: iPhone landscape safe areas and the notch, real notification taps and Android in general, real iOS file sharing.
+
+#### Device checklists (to run after deployment; results recorded here)
+
+Use the production `*.pages.dev` URL (HTTPS). "Fresh" means Koa has never been opened in that browser or app. Record ✓ / ✗ and notes, and the device model and OS version.
+
+**Before any device:** `curl -I` on the live URL for `/`, `/sw.js`, `/manifest.webmanifest`, one `/assets/*.js` and `/index.html` (expect the table above), and the build log shows Node 24.x, pnpm 12.14.0 and `check-build: OK`.
+
+**iPhone (Safari, iOS 16.4+); repeat items 1–4 on iPad if available**
+
+| # | Do | Expect | Result |
+|---|---|---|---|
+| 1 | Open the URL in Safari. Settings → "Install Koa" shows the Share steps. Share (on iOS 26 tap ••• first) → Add to Home Screen → Add | The Home Screen icon is Koa's head on cream, named "Koa" | |
+| 2 | Launch from the Home Screen | Koa's splash on cream, then Home; no Safari UI; dark status bar text readable on cream | |
+| 3 | Portrait and landscape on every tab | Nothing under the notch/Dynamic Island or the home indicator; in landscape the nav is a left rail clear of the notch; Start reachable without scrolling | |
+| 4 | Look at coins and Stats in the installed app vs Safari | The installed app starts fresh (D10); note whether Safari's data was carried over | |
+| 5 | Launch once online, then Airplane Mode, swipe the app away, relaunch | Works: fonts and Koa visible, all tabs | |
+| 6 | Offline: Settings → focus 1 min, Start, wait for it to finish in the app | Coins paid; still there after a relaunch | |
+| 7 | Settings → Session notifications on (permission prompt) → 1-min session → switch to another app | A notification may appear if iOS keeps Koa running (not guaranteed). Locked phone: nothing expected. If one appears, tap it: Koa opens | |
+| 8 | Keep screen on (iOS 18.4+ in the app), Sounds on (tap needed) | Switch works or explains; the chime plays | |
+| 9 | Settings → Export | The share sheet opens; Save to Files; the `koa-data-YYYY-MM-DD.json` file opens and contains the data | |
+| 10 | After a second deployment: reopen the app (not during a running focus session) | "Koa has an update" → Update → new version caption in Settings; data intact. During a running focus session: no card | |
+| 11 | iPhone SE (or a small iPhone) in a **Safari tab** | Note whether the short scroll before Start is acceptable | |
+
+**Android (Chrome)**
+
+| # | Do | Expect | Result |
+|---|---|---|---|
+| 1 | Open the URL. Settings → "Install Koa" (button, or the menu wording) → Install | Installed as an app with Koa's icon (maskable, nothing clipped) | |
+| 2 | Launch, then Airplane Mode, close it, relaunch | Works offline on all tabs | |
+| 3 | Session notifications on → 1-min session → switch to another app before it ends | One notification "Focus session done", with the leaf badge in the status bar | |
+| 4 | Tap it (Koa still open in the background) | Koa comes to the front, same tab, no reload | |
+| 5 | Close Koa fully, trigger another notification (if one is still showing, tap it) | Tapping opens Koa | |
+| 6 | System back gesture between tabs | Goes back through the visited tabs | |
+| 7 | After a second deployment | The update card, then Update applies it, data intact | |
+
+**Desktop**
+
+| # | Do | Expect | Result |
+|---|---|---|---|
+| 1 | Chrome or Edge: Settings → Install (or the address bar icon) | Opens in its own window; "Install Koa" card hidden there | |
+| 2 | Offline (disconnect), relaunch the installed app | Works on all tabs | |
+| 3 | After a second deployment | The update card, then Update applies it, data intact | |
+| 4 | Safari on macOS (optional): File → Add to Dock | Opens as a web app | |
+
 ## 5. Testing and acceptance summary
 
 | Step | Unit tests | Browser checks | Done when |
@@ -890,7 +1046,7 @@ On every tab, after scrolling to the end, the last control is at least 32 px abo
 
 ## 9. Deployment (Cloudflare Pages)
 
-**Not done yet.** Connecting the repository and the first deployment happen in Step 10, when Phase 9 is ready for device testing. Steps 1–9 only prepare the repository for it.
+**Configuration approved (2026-11-04); not connected or deployed yet.** Verified locally in Step 10: the files exist, the build passes, and the headers behave as intended in `wrangler pages dev`. Approved values: Free plan, `szerep/koa`, production branch `main`, root directory `/`, build command `pnpm build`, output directory `dist`, Node 24, `PNPM_VERSION=12.14.0`. Connecting the repository and the first deployment still wait for an explicit go-ahead (and the push to `main`).
 
 ### Project settings
 
@@ -915,7 +1071,7 @@ Cloudflare Pages' default Node and pnpm versions depend on the project's build s
 - Verify both in the first deployment's build log. If Cloudflare's current build image handles versions differently by then, follow its docs and update this section.
 - The build needs no Python: icons and splash screens are generated locally and committed.
 
-These files (`.node-version`, `public/_headers`, the `packageManager` field) are added in Step 10 together with the deployment, unless an earlier step needs them.
+These files (`.node-version`, `public/_headers`, the `packageManager` field) were **added in Step 10** (2026-11-04), before the deployment. With the field, pnpm 12 also records the pin at the top of `pnpm-lock.yaml`; `pnpm install --frozen-lockfile` passes. Cloudflare's docs were re-checked then: v3 doesn't detect pnpm from the lockfile, so `PNPM_VERSION` is required.
 
 ### Caching headers (`public/_headers`)
 
@@ -941,7 +1097,8 @@ Vite copies `public/_headers` to `dist/_headers`, which Cloudflare Pages applies
 - **`sw.js`, `/`, `index.html`, the manifest:** always revalidated (`no-cache` still allows a 304), so a deploy is picked up on the next update check. Browsers also ignore HTTP caching for the service worker script by default when checking for updates, but the header keeps every client and proxy consistent.
 - **`/assets/*`:** Vite's content-hashed JS, CSS and fonts. A changed file gets a new name, so a year with `immutable` is safe.
 - **Everything else** (character frames, icons, splash images, `favicon.svg`): not hashed, so they keep Cloudflare's default (revalidate with ETag). The service worker precache handles them through Workbox revisions, so offline use doesn't depend on HTTP caching.
-- Verify on the live URL with `curl -I` for each rule before device testing.
+- **`/index.html` is redirected (308) to `/` by Pages** (found with `wrangler pages dev` in Step 10), so in practice that rule only covers the redirect; the page is served as `/` with `no-cache`. The worker's precache follows the redirect correctly (verified).
+- Verified locally with `wrangler pages dev` in Step 10. Verify on the live URL with `curl -I` for each rule before device testing.
 
 ### Routing
 
@@ -960,7 +1117,7 @@ Koa has one page and hash-based tabs (`/#/shop`), so it needs no redirects. With
 
 ## 10. Implementation sequence
 
-Steps 1–6 approved and committed (2026-11-03); Steps 7–9 approved and committed (2026-11-04; Step 9's Lighthouse scores move to Step 10); Step 10 next, not started. One step at a time, each verified, documented and approved before the next.
+Steps 1–6 approved and committed (2026-11-03); Steps 7–9 approved and committed (2026-11-04; Step 9's Lighthouse scores move to Step 10); Step 10 in progress: local verification done (2026-11-04), deployment and device checks pending. One step at a time, each verified, documented and approved before the next.
 
 1. Reference sheet out of the build + build check (approved 2026-11-03)
 2. App icons (approved provisionally 2026-11-03)
@@ -970,5 +1127,5 @@ Steps 1–6 approved and committed (2026-11-03); Steps 7–9 approved and commit
 6. Standalone polish and install help (approved 2026-11-03)
 7. Notifications through the service worker (approved 2026-11-04)
 8. Export through the share sheet (approved 2026-11-04)
-9. Mobile optimization and performance budget (approved 2026-11-04; Lighthouse scores outstanding, measured in Step 10)
-10. Cloudflare Pages deployment, device verification, documentation
+9. Mobile optimization and performance budget (approved 2026-11-04; Lighthouse scores measured in Step 10)
+10. Cloudflare Pages deployment, device verification, documentation (in progress: local verification done and reviewed 2026-11-04, LCP deviation accepted, coin pill fix made; configuration approved, not connected or deployed; device checks pending)

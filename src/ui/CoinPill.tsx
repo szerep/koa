@@ -56,11 +56,14 @@ export function CoinPill({ coins, countUpDelayMs = 0 }: CoinPillProps) {
   }, [coins, countUpDelayMs, reduceMotion])
 
   return (
-    <div className="coin-pill" data-coin-target aria-label={`${format.format(coins)} coins`}>
+    <div className="coin-pill" data-coin-target>
       <CoinGlyph size={22} className={bump ? 'coin-pill__coin is-bumping' : 'coin-pill__coin'} key={bump} />
+      {/* The visible number counts up and down; screen readers get the actual balance as text
+          (an aria-label on a plain div isn't allowed and may not be announced). */}
       <span className="coin-pill__value" aria-hidden="true">
         {format.format(shown)}
       </span>
+      <span className="visually-hidden">{`${format.format(coins)} coins`}</span>
     </div>
   )
 }
