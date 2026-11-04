@@ -228,10 +228,11 @@ interface Wallet {
 | `@fontsource-variable/fredoka`, `@fontsource-variable/nunito-sans` | Self-hosted fonts, offline-ready |
 | `motion` | Springs, presence transitions, coin fly-up, tab and layout animations |
 | `vitest` (dev) | Unit tests |
+| `@playwright/test` (dev) | End-to-end suite (Phase 10), pinned so the browser builds match |
 | `@typescript/native` → TypeScript 7 (dev) | `tsc` type checking and build |
 | `typescript` → `@typescript/typescript6` (dev) | TypeScript 6 API for typescript-eslint (until TS 7.1) |
 | `vite-plugin-pwa` (dev) | Web App Manifest and the `injectManifest` build of `src/sw.ts` (Phase 9) |
 | `workbox-core`, `workbox-precaching`, `workbox-routing` (dev) | Bundled into `sw.js`: cache names, precache, navigation fallback |
 | `workbox-window` (dev) | Registration helper behind `virtual:pwa-register` (a direct entry because pnpm doesn't expose the plugin's own copy) |
 
-End-to-end checks currently run through the Playwright MCP tooling during development. A committed `@playwright/test` suite is planned for Phase 10.
+End-to-end tests: a committed `@playwright/test` suite (Phase 10, Step 1) in `e2e/*.e2e.ts`, run with `pnpm test:e2e` against the production build (`vite preview`, port 4317) at iPhone size in Chromium and WebKit and at desktop size in Chromium. Tests pin `Date` through `e2e/support/koa.ts` rather than `page.clock`. Details: `docs/phase-10/e2e-suite.md`. Layout checks at the three viewports still use the Playwright MCP tooling during development.

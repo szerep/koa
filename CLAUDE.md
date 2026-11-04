@@ -3,7 +3,7 @@
 Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and spend them on accessories for Koa. It should look and feel like a polished indie mobile game, not a productivity dashboard.
 
 - **Primary target:** iPhone (Safari and, from Phase 9, an installed PWA). It must also work on iPad and desktop browsers.
-- **Status:** Phases 1–8 are complete and approved. **Phase 9 (PWA and mobile optimization) is in progress: Steps 1–8 of 10 are approved; Step 9 (mobile optimization and the performance budget) is approved. Steps 1–6 were committed on 2026-11-03, Steps 7–9 on 2026-11-04. Step 10 is in progress: the local verification is done and reviewed (Lighthouse 92 / 96 / 100; LCP 3.1 s vs ≤ 2.5 s accepted as a documented deviation; coin pill accessibility fix done; Cloudflare configuration approved). Cloudflare Pages is connected and live at https://koa-5cl.pages.dev (first production deployment `25ab26e`; `274dd92` added the 404 fix; current production deployment `a839f5e`; build log: Node.js 24.22.1, pnpm 12.14.0, `check-build: OK`). The custom 404 page (commit `274dd92`) is verified in production. Device checks (user-confirmed): Galaxy Note 10+ install, offline, notification delivery and tap-to-open, and the update lifecycle pass (leaf badge and Koa icon not verified: a plain bell icon showed); Windows laptop install, offline and the update lifecycle (browser tabs) pass. iOS/iPadOS: NOT TESTED (no device available). Phase 9 stays open: the criterion "Installs on iPhone" is unchanged and not yet met.** See `docs/roadmap.md` and `docs/phase-9/pwa-plan.md`.
+- **Status:** Phases 1–8 are complete and approved. **Phase 9 (PWA and mobile optimization) is in progress: Steps 1–8 of 10 are approved; Step 9 (mobile optimization and the performance budget) is approved. Steps 1–6 were committed on 2026-11-03, Steps 7–9 on 2026-11-04. Step 10 is in progress: the local verification is done and reviewed (Lighthouse 92 / 96 / 100; LCP 3.1 s vs ≤ 2.5 s accepted as a documented deviation; coin pill accessibility fix done; Cloudflare configuration approved). Cloudflare Pages is connected and live at https://koa-5cl.pages.dev (first production deployment `25ab26e`; `274dd92` added the 404 fix; current production deployment `a839f5e`; build log: Node.js 24.22.1, pnpm 12.14.0, `check-build: OK`). The custom 404 page (commit `274dd92`) is verified in production. Device checks (user-confirmed): Galaxy Note 10+ install, offline, notification delivery and tap-to-open, and the update lifecycle pass (leaf badge and Koa icon not verified: a plain bell icon showed); Windows laptop install, offline and the update lifecycle (browser tabs) pass. iOS/iPadOS: NOT TESTED (no device available). Phase 9 stays open: the criterion "Installs on iPhone" is unchanged and not yet met.** **Phase 10 (testing and polish) has started with work that needs no iPhone: Step 1 (the committed Playwright suite, `docs/phase-10/e2e-suite.md`) is implemented and awaiting review, not committed.** See `docs/roadmap.md` and `docs/phase-9/pwa-plan.md`.
 
 ## Workflow
 
@@ -11,9 +11,10 @@ Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and sp
 - Large phases are split into reviewed steps (Phase 8 used 12, Phase 9 uses 10; see `docs/phase-9/pwa-plan.md`). Do one step at a time, document it, then stop for approval. Don't commit or push unless asked.
 - Record important decisions in the roadmap's decisions log and in the relevant doc. Update docs when the implementation changes them.
 - **Before calling a phase done:**
-  1. `pnpm test`, `pnpm lint` and `pnpm build` must all pass.
+  1. `pnpm test`, `pnpm lint` and `pnpm build` must all pass, and `pnpm test:e2e` (the Playwright suite, since Phase 10).
   2. Check key flows in the running app with Playwright at 390×844 (iPhone), plus 820×1180 (iPad) and 1440×900 (desktop) for layout work.
 - **Playwright notes:**
+  - The committed suite (`e2e/*.e2e.ts`, `playwright.config.ts`, details in `docs/phase-10/e2e-suite.md`) runs against the production build on port 4317, with service workers blocked. It pins `Date` and moves it with `advance()` (`e2e/support/koa.ts`) instead of `page.clock`, because `page.clock` carries `performance.now()` across reloads and delays Motion animations after every reload. Use roles and accessible names, never sleeps.
   - `page.clock.install` is per **browser context** and leaks into new pages. Check real-time animations (Motion/WAAPI) in a fresh `browser.newContext()`, or they appear frozen.
   - The fake clock also stalls Motion animations, so use `clock.runFor` or a clean context when you need to see them.
   - To test session completion in real time, seed a running timer in `localStorage` (`koa:v1`) that ends a couple of seconds after load.
@@ -28,6 +29,7 @@ Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and sp
 | `pnpm install` | Install dependencies |
 | `pnpm dev` | Vite dev server (if port 5173 is taken, use `pnpm dev --port 5180 --strictPort`) |
 | `pnpm test` | Unit tests (Vitest), `*.test.ts` next to the code |
+| `pnpm test:e2e` | Playwright suite (`e2e/*.e2e.ts`): builds, serves on port 4317, runs iPhone-size Chromium and WebKit plus desktop Chromium. First time: `pnpm exec playwright install chromium webkit` |
 | `pnpm lint` | ESLint |
 | `pnpm build` | Type check (`tsc -b`), production build, then `scripts/check-build.mjs` (fails on reference art, oversized images, a wrong precache, mismatched splash links or the performance budget) |
 | `pnpm preview` | Serve `dist/` (the only way to run the service worker) |
@@ -47,7 +49,7 @@ Koa is a cozy Pomodoro app with a koala companion. You study, earn Coins, and sp
   - `motion`: springs, presence, the coin fly-up
   - `lucide-react`: interface icons only
   - `@fontsource-variable/fredoka` and `@fontsource-variable/nunito-sans`: self-hosted fonts
-- **Dev dependencies:** `vitest`; `vite-plugin-pwa` 2 (`injectManifest`) with `workbox-core`, `workbox-precaching`, `workbox-routing` (bundled into `sw.js`) and `workbox-window` (a direct entry: pnpm doesn't expose the plugin's own copy to `virtual:pwa-register`).
+- **Dev dependencies:** `vitest`; `@playwright/test` (the e2e suite, Phase 10, pinned so the browser builds match); `vite-plugin-pwa` 2 (`injectManifest`) with `workbox-core`, `workbox-precaching`, `workbox-routing` (bundled into `sw.js`) and `workbox-window` (a direct entry: pnpm doesn't expose the plugin's own copy to `virtual:pwa-register`).
 - **Add a dependency only when it clearly earns its place.** Nothing else is planned for Phase 9.
 
 ## Architecture (as built; details in `docs/architecture.md`)
@@ -78,6 +80,7 @@ src/config/    timerDefaults.ts, rewards.ts, catalog.ts, koalaBehavior.ts, koala
 src/styles/    tokens.css (design tokens), base.css
 public/        characters/ (Koa frames, precached), icons/ and splash/ (generated, not precached), favicon.svg
 scripts/       check-build.mjs (+ test), app-version.ts (+ test), art/ (Python art pipeline)
+e2e/           Playwright journeys (*.e2e.ts, so Vitest skips them) + support/koa.ts (pinned time, helpers)
 art/reference/ the design sheet (never shipped; the build check enforces it)
 ```
 
@@ -195,5 +198,5 @@ Full details: `docs/phase-9/pwa-plan.md` (each step's "Implementation details", 
   - Android Chrome: the leaf badge and Koa icon are not verified (a plain bell icon showed); the two tap scenarios (Koa in the background vs fully closed) weren't recorded separately; the back gesture is NOT TESTED.
   - Desktop: the update flow in the installed app and Safari on macOS are NOT TESTED. Device, OS and browser versions weren't recorded.
 - **Known limitations (accepted for now):** in a Safari tab on iPhone SE, Home may need a short scroll before Start; at 195 px wide (a phone at 200% page zoom) the layout scrolls sideways (Phase 10 accessibility pass).
-- **Phase 10:** a committed Playwright suite plus polish.
+- **Phase 10 (started):** Step 1, the committed Playwright suite (21 tests × 3 projects), is implemented and awaiting review (`docs/phase-10/e2e-suite.md`). Next: the accessibility pass, motion tuning, the copy pass and a bug bash, each after approval.
 - **Deferred (not in current scope):** accessory artwork, hoodie recolors (need approval), the evening/dark theme, revisiting the icon composition, data import, push notifications, accounts or sync.

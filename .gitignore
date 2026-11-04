@@ -35,6 +35,7 @@ dist-ssr
 coverage
 test-results
 playwright-report
+blob-report
 *.tsbuildinfo
 
 # Python caches (art scripts)
