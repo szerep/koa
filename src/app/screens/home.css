@@ -111,7 +111,7 @@
  * two-column layout with a stage sized from the short height, and Start is on screen without
  * scrolling. Tighter rows; the stage also shrinks on narrow landscape phones (iPhone SE).
  */
-@media (orientation: landscape) and (max-height: 500px) {
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 600px) {
   .home {
     --stage: clamp(
       180px,

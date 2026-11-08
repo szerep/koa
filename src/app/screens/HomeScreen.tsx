@@ -32,6 +32,8 @@ export function HomeScreen() {
 
   return (
     <div className="home">
+      {/* Every screen has a level-1 heading for screen reader navigation; Home's is not shown. */}
+      <h1 className="visually-hidden">Timer</h1>
       <SegmentedControl
         className="home__modes"
         label="Timer mode"

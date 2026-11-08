@@ -1,5 +1,5 @@
 import { ChartNoAxesColumn, House, Settings, ShoppingBag } from 'lucide-react'
-import { useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { UpdatePrompt } from '../features/pwa/UpdatePrompt'
 import { RewardLayer } from '../features/rewards/RewardLayer'
@@ -11,6 +11,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { StatsScreen } from './screens/StatsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { ShopScreen } from './screens/ShopScreen'
+import { pageTitle } from './pageTitle'
 import { useHashTab } from './useHashTab'
 import { useTimerAmbience } from './useTimerAmbience'
 import './app.css'
@@ -38,6 +39,11 @@ export default function App() {
   const Screen = screens[tab]
   const { focusRunning, announcement } = useTimerAmbience()
   const wallet = useSyncExternalStore(walletStore.subscribe, walletStore.getState)
+
+  // Each tab is its own history entry, so it gets its own title ("Shop · Koa"); Home stays "Koa".
+  useEffect(() => {
+    document.title = pageTitle(tab, navItems)
+  }, [tab])
 
   return (
     <MotionConfig reducedMotion="user">

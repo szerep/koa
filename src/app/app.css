@@ -19,7 +19,7 @@ html {
   scroll-padding-bottom: calc(var(--safe-bottom) + var(--nav-height) + var(--space-5));
 }
 
-@media (min-width: 960px), (orientation: landscape) and (max-height: 500px) {
+@media (min-width: 960px), (orientation: landscape) and (max-height: 500px) and (min-width: 600px) {
   html {
     scroll-padding-bottom: 0;
   }
@@ -78,8 +78,12 @@ html {
   }
 }
 
-/* Phones in landscape: room on the left for the nav rail (bottom-nav.css), none below. */
-@media (orientation: landscape) and (max-height: 500px) {
+/* Phones in landscape: room on the left for the nav rail (bottom-nav.css), none below.
+   min-width 600px (current phones are at least 640 px wide in landscape, e.g. 667 for the
+   iPhone SE): a short, narrow window, such as a desktop browser at 400% zoom (320×256) or an old
+   568-px phone, keeps the single-column layout instead of scrolling sideways (WCAG 1.4.10
+   Reflow). The same condition is used in home.css, shop.css and bottom-nav.css. */
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 600px) {
   .app {
     padding:
       calc(var(--safe-top) + var(--space-2))

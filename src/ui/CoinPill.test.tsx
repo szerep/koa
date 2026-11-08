@@ -26,8 +26,9 @@ describe('CoinPill accessibility', () => {
     expect(exposedText(html)).toBe(`${format.format(1250)} coins`)
   })
 
-  it('announces the actual balance, including zero', () => {
+  it('announces the actual balance, including zero and a single coin', () => {
     expect(exposedText(renderToStaticMarkup(<CoinPill coins={0} />))).toBe('0 coins')
+    expect(exposedText(renderToStaticMarkup(<CoinPill coins={1} />))).toBe('1 coin')
     expect(exposedText(renderToStaticMarkup(<CoinPill coins={25} countUpDelayMs={900} />))).toBe('25 coins')
   })
 

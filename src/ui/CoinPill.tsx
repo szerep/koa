@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { animate, useReducedMotion } from 'motion/react'
+import { coinText } from './coinText'
 import { CoinGlyph } from './glyphs'
 import './coin-pill.css'
 
@@ -63,7 +64,7 @@ export function CoinPill({ coins, countUpDelayMs = 0 }: CoinPillProps) {
       <span className="coin-pill__value" aria-hidden="true">
         {format.format(shown)}
       </span>
-      <span className="visually-hidden">{`${format.format(coins)} coins`}</span>
+      <span className="visually-hidden">{coinText(coins)}</span>
     </div>
   )
 }

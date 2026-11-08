@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { Grant } from '../../core/rewards/wallet'
+import { coinText } from '../../ui/coinText'
 import { CoinGlyph } from '../../ui/glyphs'
 import { walletStore } from './store'
 import './reward-layer.css'
@@ -60,7 +61,7 @@ export function RewardLayer() {
             labels: grants.map((g) => ({ key: g.key, text: labelFor(g), bonus: g.kind !== 'focus' })),
           },
         ])
-        setAnnouncement(`You earned ${total} coins.`)
+        setAnnouncement(`You earned ${coinText(total)}.`)
         window.setTimeout(() => setBursts((list) => list.filter((b) => b.id !== id)), LIFETIME_MS)
       }),
     [],

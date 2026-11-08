@@ -93,7 +93,7 @@
  * Phones in landscape (Phase 9 Step 9): a floating bar would take a fifth of the height and
  * cover Koa, so the nav becomes a compact rail on the left, clear of the notch (safe-left).
  */
-@media (orientation: landscape) and (max-height: 500px) {
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 600px) {
   .nav {
     left: calc(var(--safe-left) + 12px);
     top: 50%;

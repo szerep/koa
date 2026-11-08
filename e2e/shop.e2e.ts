@@ -51,7 +51,7 @@ test.describe('shop', () => {
     await expect(page.getByRole('status').filter({ hasText: 'Daisy is yours. Koa is wearing it now.' })).toBeVisible()
     await expectCoins(page, 90)
     await expect(daisy).toContainText('Owned')
-    await expect(daisy.getByRole('button', { name: 'Wearing' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(daisy.getByRole('button', { name: 'Wearing the daisy', exact: true })).toHaveAttribute('aria-pressed', 'true')
     const wearing = page.getByRole('list', { name: 'Koa is wearing' })
     await expect(wearing.getByRole('button', { name: 'Take off the daisy' })).toBeVisible()
 
@@ -62,22 +62,22 @@ test.describe('shop', () => {
     await reload(page)
     await expectCoins(page, 90)
     await openCategory(page, 'Extras')
-    await expect(daisy.getByRole('button', { name: 'Wearing' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(daisy.getByRole('button', { name: 'Wearing the daisy', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await expect(wearing.getByRole('button', { name: 'Take off the daisy' })).toBeVisible()
 
     // Taking it off keeps it owned, and that survives a reload too.
     await wearing.getByRole('button', { name: 'Take off the daisy' }).click()
-    await expect(daisy.getByRole('button', { name: 'Wear', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    await expect(daisy.getByRole('button', { name: 'Wear the daisy', exact: true })).toHaveAttribute('aria-pressed', 'false')
     await expect(wearing).toHaveCount(0)
 
     await reload(page)
     await openCategory(page, 'Extras')
     await expect(daisy).toContainText('Owned')
-    await expect(daisy.getByRole('button', { name: 'Wear', exact: true })).toBeVisible()
+    await expect(daisy.getByRole('button', { name: 'Wear the daisy', exact: true })).toBeVisible()
     await expectCoins(page, 90)
 
-    await daisy.getByRole('button', { name: 'Wear', exact: true }).click()
-    await expect(daisy.getByRole('button', { name: 'Wearing' })).toHaveAttribute('aria-pressed', 'true')
+    await daisy.getByRole('button', { name: 'Wear the daisy', exact: true }).click()
+    await expect(daisy.getByRole('button', { name: 'Wearing the daisy', exact: true })).toHaveAttribute('aria-pressed', 'true')
     // Wearing again is free.
     await expectCoins(page, 90)
   })

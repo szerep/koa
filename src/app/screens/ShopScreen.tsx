@@ -180,6 +180,8 @@ function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemC
         onClick={onToggleWear}
       >
         {equipped ? 'Wearing' : 'Wear'}
+        {/* Several cards have this button; the item makes each name unique ("Wear the daisy"). */}
+        <span className="visually-hidden"> the {item.name.toLowerCase()}</span>
       </Button>
     )
   } else if (missing > 0) {
@@ -188,6 +190,8 @@ function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemC
         <span className="item-card__price">
           <CoinGlyph size={18} />
           {item.price}
+          {/* Read as "120 coins, 119 to go" rather than "120 119 to go". */}
+          <span className="visually-hidden"> coins,</span>
         </span>
         <span className="item-card__need">{missing} to go</span>
       </div>

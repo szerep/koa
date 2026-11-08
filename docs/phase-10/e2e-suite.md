@@ -1,8 +1,8 @@
 # Phase 10, Step 1: the Playwright end-to-end suite
 
-Status: implemented 2026-11-04, **awaiting review** (not committed).
+Status: implemented 2026-11-04 and committed as `edee6ae` (21 tests). Phase 10 Step 2 (the accessibility pass, approved; summary in `docs/phase-10/step-2-summary.md`) added `accessibility.e2e.ts` and updated `shop.e2e.ts`: now 25 tests.
 
-A committed `@playwright/test` suite that drives Koa's real user journeys in a browser. It complements the Vitest unit tests (627, `src/**/*.test.ts`): the unit tests own the rules and edge cases; the e2e tests check that the screens, stores, wiring (`src/app/connect.ts`) and LocalStorage work together the way a user meets them.
+A committed `@playwright/test` suite that drives Koa's real user journeys in a browser. It complements the Vitest unit tests (633 since Step 2, `src/**/*.test.ts`): the unit tests own the rules and edge cases; the e2e tests check that the screens, stores, wiring (`src/app/connect.ts`) and LocalStorage work together the way a user meets them.
 
 ## Running it
 
@@ -17,7 +17,7 @@ A committed `@playwright/test` suite that drives Koa's real user journeys in a b
 
 Faster local loop: start `pnpm build && pnpm exec vite preview --port 4317 --strictPort` in another terminal. Locally the config reuses a server already on 4317 instead of building again, so **rebuild after changing app code** or the tests run the old bundle. With `CI` set, the server is always started fresh, retries are 1, `test.only` fails the run, and an HTML report is written to `playwright-report/`.
 
-A cold run of the whole suite (63 runs, parallel) took 48 s on the development laptop, including the build.
+A cold run of the whole suite (then 63 runs, parallel) took 48 s on the development laptop, including the build.
 
 ## Setup
 
@@ -41,11 +41,11 @@ No test sleeps. Every wait is a web-first assertion (`expect(locator)…`), whic
 
 ## Selectors
 
-Roles and accessible names only (`getByRole`, `getByText` for visible copy), the same things a screen reader user meets: the `Main` navigation links, the `Timer mode` radio group, the `Pause`/`Resume`/`Start break` buttons, the steppers' spinbuttons (`Focus`, `Long break after`), the `Focus presets` group, item cards (`article` + heading), the `Koa is wearing` list, the `Reset your progress?` group, Stats regions (`Today`, `Current streak`, `All-time focus`). The coin balance is read from the pill's screen-reader text ("90 coins"), which is the actual balance rather than the animated number. There are no test IDs and no CSS class selectors. The one structural selector is `main time` for the clock.
+Roles and accessible names only (`getByRole`, `getByText` for visible copy), the same things a screen reader user meets: the `Main` navigation links, the `Timer mode` radio group, the `Pause`/`Resume`/`Start break` buttons, the steppers' spinbuttons (`Focus`, `Long break after`), the `Focus presets` group, item cards (`article` + heading), the `Koa is wearing` list, the shop's `Wear the daisy` / `Wearing the daisy` buttons (named after their item since Step 2), the `Reset your progress?` group, Stats regions (`Today`, `Current streak`, `All-time focus`). The coin balance is read from the pill's screen-reader text ("90 coins"), which is the actual balance rather than the animated number. There are no test IDs and no CSS class selectors. The one structural selector is `main time` for the clock.
 
 Direct storage reads are limited to two places where the UI makes a promise it can't show: the export file's content, and the existence of the `koa:backup:reset` backup the reset message mentions.
 
-## Coverage (21 tests × 3 projects = 63 runs)
+## Coverage (25 tests × 3 projects = 75 runs)
 
 | File | Tests | Journeys |
 |---|---|---|
@@ -55,8 +55,15 @@ Direct storage reads are limited to two places where the UI makes a promise it c
 | `settings.e2e.ts` | 3 | Preset, stepper buttons and typing change focus, short break, long break, interval and daily goal; all persist after a reload and apply on Home (50:00, Session 1 of 3, 06:00, 30:00); typed values are clamped ("Adjusted to 120 minutes"), nonsense and Escape revert; a running session keeps its length after a change (the note shows), still pays for its 25 minutes, and the next one uses the new length |
 | `shop.e2e.ts` | 2 | Unaffordable items show "N to go" and no buy button; earning 170 coins through a real 120-minute session, buying the daisy takes two taps (the first spends nothing), equips it, updates the balance and other prices; ownership and outfit survive reloads; taking it off keeps it owned (also after a reload); wearing again is free |
 | `data.e2e.ts` | 3 | Coins, outfit, stats, settings and a paused break all survive a reload; Export downloads `koa-data-2026-06-15.json` with the documented envelope; Reset asks with a summary of the user's actual data (90 to spend, 170 earned, 1 item, 2 h), Escape cancels and returns focus to the button, confirming clears coins, cycle, shop and stats, keeps every setting, writes the backup, and stays reset after a reload |
+| `accessibility.e2e.ts` | 4 | (Step 2) Every screen has exactly one level-1 heading (Home's is the visually hidden "Timer") and its own page title ("Shop · Koa", "Stats · Koa", "Settings · Koa"; Home stays "Koa"); shop buttons name their item (two owned hats: "Wear the sage beanie", "Wearing the sand cap") and a locked price reads with its unit ("120 coins,"); no sideways scroll on any tab at 320×568 (small phone), 320×256 (a 1280×1024 desktop at 400% zoom, WCAG 1.4.10) and 568×320 (an old 568-px phone in landscape, which gets the single-column layout); a 667×375 phone in landscape keeps the side rail with no sideways scroll |
 
 Every test also fails on any uncaught page error or console error.
+
+After Step 2 the full 75-run suite has not been run as a whole yet: `accessibility.e2e.ts` passed 12 / 12 after the final CSS change, and `accessibility`, `shop`, `app` and `rewards` passed 37 / 37 before it (details in `docs/phase-10/step-2-summary.md` §5).
+
+### Accessibility coverage (Step 2)
+
+`accessibility.e2e.ts` covers only what needs a real browser: headings and page titles per tab, the shop's item-specific button names and price wording, and reflow. The rules behind them (`pageTitle()`, `coinText()`) are unit-tested, and the static ARIA checks were done by the Step 2 audit (a throwaway script, not committed) and Lighthouse. The reflow viewports pin the phone-landscape layout's `(min-width: 600px)` condition from both sides: 568×320 must get the single-column layout without sideways scroll, and 667×375 must keep the side rail. 195 px wide (a phone at 200% page zoom) stays a known limitation and isn't tested.
 
 ### Requested journeys → tests
 
@@ -68,7 +75,7 @@ Every test also fails on any uncaught page error or console error.
 - **Service worker features** (offline, update prompt, install card) are blocked here; they were checked manually in Phase 9. A separate project that allows the worker could cover them later.
 - **Browser permission features:** notifications, Keep screen on and Sounds aren't driven here. They depend on permission prompts and device APIs; their rules are unit-tested with injected environments.
 - **Share-sheet export** (installed app only) isn't covered; the browser-tab download is.
-- **Visuals and motion** aren't asserted: no screenshot comparisons, the coin fly-up and Koa's behaviors aren't checked (only the accessible balance and announcements). Layout checks at the three viewports stay a manual Playwright pass for layout work.
+- **Visuals and motion** aren't asserted: no screenshot comparisons, the coin fly-up and Koa's behaviors aren't checked (only the accessible balance and announcements). Layout checks at the three viewports stay a manual Playwright pass for layout work; only the Step 2 reflow checks (no sideways scroll, the landscape side rail) are automated.
 - **Cross-tab sync** (the `storage` event) isn't covered.
 - **Real-time UI timeouts** (the shop's 3.5 s buy confirmation and toasts) run on real timers, since only `Date` is pinned; the tests act well within them and don't test the expiry.
 - WebKit on Windows is slower (the longest journeys take ~15 s there), hence the 60 s test and 10 s assertion timeouts.
