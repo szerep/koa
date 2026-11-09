@@ -52,7 +52,8 @@ export function ShopScreen() {
       koalaStore.showOff()
       say(`${item.name} is yours. Koa is wearing it now.`)
     } else if (result.reason === 'insufficientFunds') {
-      say(`You need ${shortfall(result.wallet, item)} more coins for the ${item.name.toLowerCase()}.`)
+      const missing = shortfall(result.wallet, item)
+      say(`You need ${missing} more ${missing === 1 ? 'coin' : 'coins'} for the ${item.name.toLowerCase()}.`)
     } else if (result.reason === 'alreadySpent') {
       say(`You already own the ${item.name.toLowerCase()}.`)
     }

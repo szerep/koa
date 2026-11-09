@@ -46,7 +46,7 @@ export const koalaLines: Record<LineTopic, readonly string[]> = {
   longBreakStart: ['You earned a long break.', 'Long break! Go stretch your legs.', 'Snack time, maybe?'],
   breakOver: ['Break’s over. Ready when you are.', 'Feeling rested?', 'Back to it, whenever you like.'],
   celebrate: ['You did it!', 'I’m proud of you!', 'Nice focus!', 'That was a good one.'],
-  cycle: ['A whole cycle! I’m so proud of you.', 'Four in a row! Amazing.'],
+  cycle: ['A whole cycle! I’m so proud of you.', 'All the way to a long break! Amazing.'],
   dailyGoal: ['We hit today’s goal!', 'Daily goal done. You’re a star.'],
   showOff: ['Ooh, thank you!', 'I love it!', 'So cozy!'],
 }

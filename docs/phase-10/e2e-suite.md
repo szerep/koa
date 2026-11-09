@@ -67,6 +67,8 @@ After Step 2 the full 75-run suite has not been run as a whole yet: `accessibili
 
 **Step 3 (motion tuning, `docs/phase-10/step-3-summary.md`):** the existing `buy()` helper now buys with the keyboard (Enter on the price button, then Enter on "Buy for N?") and checks that focus stays on the card's button through both steps. This guards the fix for the purchase pop, which used to rebuild the card and drop focus; the assertion was confirmed to fail on the old code. No test was added: the suite is still 25 tests × 3 projects = 75 runs. For Step 3 only the `accessibility`, `shop`, `app` and `rewards` specs were run (39 / 39, all three projects); the full 75-run suite was not re-run.
 
+**Step 4 (copy pass, `docs/phase-10/step-4-summary.md`):** no E2E changes. The three changed strings (a Koa cycle line, the shop's not-enough-coins toast, the separator in the running-session tab title) aren't used by any spec or accessible name, so no E2E specs were run for Step 4. Coverage is unchanged: 25 tests × 3 projects = 75 runs.
+
 ### Requested journeys → tests
 
 1. Loads: `app` (first test). 2. Start and pause: `timer` (first two). 3. Session state in the UI: `timer`, `rewards` (mode, clock, button labels, cycle label, locked chips). 4. Completion pays and updates progress: `rewards`, `timer` (completed while away). 5. Breaks and the next session: `rewards`. 6. Settings persist: `settings`. 7. Shop persists: `shop`. 8. Data intact after reload: `data` (first test), plus reload checks throughout. 9. Reset is safe and keeps settings: `data`. 10. Navigation and dialogs with accessible interactions: `app` (nav, keyboard), `timer` (skip confirmation), `data` (reset confirmation, Escape, focus return).

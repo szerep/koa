@@ -15,7 +15,7 @@ export function useTimerAmbience() {
   const [announcement, setAnnouncement] = useState('')
   const running = state.status === 'running'
 
-  const title = running ? `${formatClock(remainingMs / 1000)} ${modeLabels[state.mode]} | ${BASE_TITLE}` : BASE_TITLE
+  const title = running ? `${formatClock(remainingMs / 1000)} ${modeLabels[state.mode]} · ${BASE_TITLE}` : BASE_TITLE
   useEffect(() => {
     document.title = title
   }, [title])
