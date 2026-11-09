@@ -4,21 +4,17 @@ import { formatClock } from '../features/timer/format'
 import { timerStore } from '../features/timer/store'
 import { useTimer } from '../features/timer/useTimer'
 
-const BASE_TITLE = 'Koa'
-
 /**
- * App-wide timer side effects: the tab title shows the countdown while a session runs,
- * the chrome dims during focus, and finished sessions are announced to screen readers.
+ * App-wide timer side effects: the countdown for the tab title while a session runs (App sets
+ * the title, so the tab's own title comes back when it stops), the chrome dims during focus, and
+ * finished sessions are announced to screen readers.
  */
 export function useTimerAmbience() {
   const { state, remainingMs } = useTimer()
   const [announcement, setAnnouncement] = useState('')
   const running = state.status === 'running'
 
-  const title = running ? `${formatClock(remainingMs / 1000)} ${modeLabels[state.mode]} · ${BASE_TITLE}` : BASE_TITLE
-  useEffect(() => {
-    document.title = title
-  }, [title])
+  const countdown = running ? `${formatClock(remainingMs / 1000)} ${modeLabels[state.mode]}` : null
 
   useEffect(
     () =>
@@ -34,5 +30,5 @@ export function useTimerAmbience() {
     [],
   )
 
-  return { focusRunning: running && state.mode === 'focus', announcement }
+  return { focusRunning: running && state.mode === 'focus', announcement, countdown }
 }

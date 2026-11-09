@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { expectNoErrors, goTo, mainNav, openKoa, runSession, typeSetting, type TabName } from './support/koa.ts'
+import { MINUTE, advance, expectNoErrors, goTo, mainNav, openKoa, runSession, startSession, typeSetting, type TabName } from './support/koa.ts'
 
 /**
  * Phase 10 Step 2 (accessibility pass): what only a real browser can show. The rules behind these
@@ -38,6 +38,15 @@ test.describe('accessibility', () => {
       await expect(page).toHaveTitle(title)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading)
     }
+
+    // A running session shows its countdown on every tab; when it ends, the tab's own title
+    // comes back (it used to fall back to plain "Koa").
+    await startSession(page)
+    await expect(page).toHaveTitle('25:00 Focus · Koa')
+    await goTo(page, 'Shop')
+    await expect(page).toHaveTitle('25:00 Focus · Koa')
+    await advance(page, 25 * MINUTE)
+    await expect(page).toHaveTitle('Shop · Koa')
   })
 
   test('shop buttons say which item they act on, and prices are read with their unit', async ({ page }) => {

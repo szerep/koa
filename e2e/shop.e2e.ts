@@ -43,10 +43,13 @@ test.describe('shop', () => {
     await openCategory(page, 'Extras')
     const daisy = itemCard(page, 'Daisy')
 
-    await daisy.getByRole('button', { name: 'Buy Daisy for 80 coins' }).click()
-    // The first tap only asks; nothing is spent yet.
+    // The first tap only asks; nothing is spent yet. A double-tap counts as one tap: its second
+    // tap used to land on "Buy for 80?" and buy without asking.
+    await daisy.getByRole('button', { name: 'Buy Daisy for 80 coins' }).dblclick()
+    await expect(daisy.getByRole('button', { name: 'Buy for 80?' })).toBeVisible()
     await expectCoins(page, 170)
-    await daisy.getByRole('button', { name: 'Buy for 80?' }).click()
+    // Likewise, double-tapping the confirmation buys once and leaves the daisy on.
+    await daisy.getByRole('button', { name: 'Buy for 80?' }).dblclick()
 
     await expect(page.getByRole('status').filter({ hasText: 'Daisy is yours. Koa is wearing it now.' })).toBeVisible()
     await expectCoins(page, 90)

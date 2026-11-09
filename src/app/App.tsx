@@ -37,13 +37,16 @@ const screens: Record<Tab, () => React.JSX.Element> = {
 export default function App() {
   const [tab, setTab] = useHashTab(TABS, 'home')
   const Screen = screens[tab]
-  const { focusRunning, announcement } = useTimerAmbience()
+  const { focusRunning, announcement, countdown } = useTimerAmbience()
   const wallet = useSyncExternalStore(walletStore.subscribe, walletStore.getState)
 
   // Each tab is its own history entry, so it gets its own title ("Shop · Koa"); Home stays "Koa".
+  // A running session shows its countdown instead. One effect owns the title, so the tab's title
+  // comes back when a session ends or pauses.
+  const title = pageTitle(tab, navItems, countdown)
   useEffect(() => {
-    document.title = pageTitle(tab, navItems)
-  }, [tab])
+    document.title = title
+  }, [title])
 
   return (
     <MotionConfig reducedMotion="user">

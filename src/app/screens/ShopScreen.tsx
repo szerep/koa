@@ -22,6 +22,13 @@ import './shop.css'
 
 const CONFIRM_MS = 3500
 
+/**
+ * The buy button relabels in place (price → "Buy for N?" → "Wearing"), so the second tap of a
+ * double-tap lands on the next step: it bought without the confirmation, then took the item off.
+ * Only the first click of a multi-click counts (`detail` is 0 for keyboard activation).
+ */
+const isRepeatClick = (e: React.MouseEvent) => e.detail > 1
+
 export function ShopScreen() {
   const wallet = useSyncExternalStore(walletStore.subscribe, walletStore.getState)
   const wardrobe = useSyncExternalStore(wardrobeStore.subscribe, wardrobeStore.getState)
@@ -179,7 +186,9 @@ function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemC
         className="item-card__action"
         icon={equipped ? <Check /> : undefined}
         aria-pressed={equipped}
-        onClick={onToggleWear}
+        onClick={(e) => {
+          if (!isRepeatClick(e)) onToggleWear()
+        }}
       >
         {equipped ? 'Wearing' : 'Wear'}
         {/* Several cards have this button; the item makes each name unique ("Wear the daisy"). */}
@@ -202,7 +211,8 @@ function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemC
     action = (
       <Button
         className="item-card__action item-card__action--confirm"
-        onClick={() => {
+        onClick={(e) => {
+          if (isRepeatClick(e)) return
           setConfirming(false)
           // A small settle on the card. Animated in place (not by remounting the card), so focus
           // stays on this button as it becomes "Wearing". Reduced motion: no movement.
