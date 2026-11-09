@@ -2,7 +2,7 @@
 
 Status: implemented 2026-11-04 and committed as `edee6ae` (21 tests). Phase 10 Step 2 (the accessibility pass, approved; summary in `docs/phase-10/step-2-summary.md`) added `accessibility.e2e.ts` and updated `shop.e2e.ts`: now 25 tests.
 
-A committed `@playwright/test` suite that drives Koa's real user journeys in a browser. It complements the Vitest unit tests (633 since Step 2, `src/**/*.test.ts`): the unit tests own the rules and edge cases; the e2e tests check that the screens, stores, wiring (`src/app/connect.ts`) and LocalStorage work together the way a user meets them.
+A committed `@playwright/test` suite that drives Koa's real user journeys in a browser. It complements the Vitest unit tests (635 after the Bug Bash, `src/**/*.test.ts`): the unit tests own the rules and edge cases; the e2e tests check that the screens, stores, wiring (`src/app/connect.ts`) and LocalStorage work together the way a user meets them.
 
 ## Running it
 
