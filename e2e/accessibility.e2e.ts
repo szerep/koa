@@ -10,10 +10,12 @@ test.afterEach(({ page }) => expectNoErrors(page))
 
 const TABS: readonly TabName[] = ['Home', 'Shop', 'Stats', 'Settings']
 
+/** Buys with the keyboard: focus stays on the card's button from the price to "Wearing". */
 async function buy(page: Page, name: string, price: number) {
-  await page.getByRole('button', { name: `Buy ${name} for ${price} coins` }).click()
-  await page.getByRole('button', { name: `Buy for ${price}?` }).click()
-  await expect(page.getByRole('button', { name: `Wearing the ${name.toLowerCase()}`, exact: true })).toBeVisible()
+  await page.getByRole('button', { name: `Buy ${name} for ${price} coins` }).press('Enter')
+  await expect(page.getByRole('button', { name: `Buy for ${price}?` })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: `Wearing the ${name.toLowerCase()}`, exact: true })).toBeFocused()
 }
 
 async function scrollsSideways(page: Page) {

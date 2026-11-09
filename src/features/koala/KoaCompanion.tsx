@@ -42,7 +42,9 @@ export function KoaCompanion({ width, figureSizes, wearing, speaks = false, inte
                   className="koa-bubble"
                   initial={{ opacity: 0, scale: 0.85, y: 6 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.96, y: -2 }}
+                  // Its own quick fade: otherwise the exit inherits the entrance delay, and a
+                  // celebration line lingered for another 2–3 s after its time was up.
+                  exit={{ opacity: 0, scale: 0.96, y: -2, transition: { duration: 0.18, ease: 'easeOut' } }}
                   transition={{
                     type: 'spring',
                     stiffness: 420,

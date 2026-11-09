@@ -62,7 +62,9 @@ export default function App() {
               className="app__screen"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
+              // A shorter exit: with mode="wait" the new screen only starts after it, so a tab tap
+              // took 400 ms to settle; now about 320 ms.
+              exit={{ opacity: 0, y: -4, transition: { duration: 0.12, ease: [0.22, 1, 0.36, 1] } }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
               <Screen />

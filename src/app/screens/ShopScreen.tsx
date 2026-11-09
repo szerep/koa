@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Check, X } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react'
 import { categories, catalog, itemById } from '../../config/catalog'
 import {
   isEquipped,
@@ -161,7 +161,8 @@ interface ItemCardProps {
 
 function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemCardProps) {
   const [confirming, setConfirming] = useState(false)
-  const [justBought, setJustBought] = useState(0)
+  const [card, animate] = useAnimate<HTMLElement>()
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     if (!confirming) return
@@ -202,7 +203,11 @@ function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemC
         className="item-card__action item-card__action--confirm"
         onClick={() => {
           setConfirming(false)
-          setJustBought((n) => n + 1)
+          // A small settle on the card. Animated in place (not by remounting the card), so focus
+          // stays on this button as it becomes "Wearing". Reduced motion: no movement.
+          if (!reduceMotion && card.current) {
+            animate(card.current, { scale: [0.96, 1] }, { type: 'spring', stiffness: 500, damping: 18 })
+          }
           onBuy()
         }}
       >
@@ -224,13 +229,7 @@ function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemC
   }
 
   return (
-    <motion.article
-      key={justBought}
-      className={`item-card${equipped ? ' is-equipped' : ''}`}
-      initial={justBought ? { scale: 0.96 } : false}
-      animate={{ scale: 1 }}
-      transition={{ type: 'spring', stiffness: 500, damping: 18 }}
-    >
+    <article ref={card} className={`item-card${equipped ? ' is-equipped' : ''}`}>
       <div className="item-card__art">
         <span className="item-card__swatch" style={{ background: item.swatch }} aria-hidden="true" />
         {!hasAccessoryArt(item.id) && <span className="item-card__art-status">Artwork coming soon</span>}
@@ -239,6 +238,6 @@ function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemC
       <h2 className="item-card__name">{item.name}</h2>
       <p className="item-card__desc">{item.description}</p>
       {action}
-    </motion.article>
+    </article>
   )
 }

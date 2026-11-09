@@ -26,7 +26,10 @@
   fill: none;
   stroke: var(--euca-500);
   stroke-linecap: round;
-  transition: stroke-dashoffset 600ms linear;
+  /* No transition: the timer ticks every 250 ms, so a 600 ms transition was retargeted on every
+     tick and repainted the ring at full frame rate for the whole session, for sub-pixel steps
+     (a 25-minute session moves it 0.017% per tick). Without it, the arc and the leaf cap (which
+     never had a transition) also stay together on resets, skips and catch-ups. */
 }
 
 .ring__cap {
