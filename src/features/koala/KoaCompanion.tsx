@@ -1,7 +1,8 @@
-import { useSyncExternalStore } from 'react'
+import { useSyncExternalStore, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { present } from '../../core/koala/brain'
 import { Koala } from './Koala'
+import { bubbleLiftPercent } from './manifest'
 import { koalaStore } from './store'
 import './koa-companion.css'
 
@@ -20,6 +21,9 @@ interface KoaCompanionProps {
 export function KoaCompanion({ width, figureSizes, wearing, speaks = false, interactive = false, className }: KoaCompanionProps) {
   const state = useSyncExternalStore(koalaStore.subscribe, koalaStore.getState)
   const view = present(state)
+  // A worn hat can reach above the head (the beanie's pom-pom): lift the bubble clear of it.
+  const lift = bubbleLiftPercent(wearing)
+  const anchorStyle = lift > 0 ? ({ '--bubble-lift': `${lift.toFixed(2)}%` } as CSSProperties) : undefined
 
   return (
     <Koala
@@ -34,7 +38,11 @@ export function KoaCompanion({ width, figureSizes, wearing, speaks = false, inte
     >
       {speaks && (
         <>
-          <div className="koa-bubble-anchor" aria-live="polite">
+          <div
+            className={`koa-bubble-anchor${anchorStyle ? ' koa-bubble-anchor--over-hat' : ''}`}
+            style={anchorStyle}
+            aria-live="polite"
+          >
             <AnimatePresence>
               {view.bubble && (
                 <motion.p

@@ -75,7 +75,7 @@ export default defineConfig({
       injectManifest: {
         // The app shell, JS, CSS, fonts, favicon and the Koa frames. The manifest is added by
         // the plugin. scripts/check-build.mjs verifies the resulting list on every build.
-        globPatterns: ['index.html', 'favicon.svg', 'assets/*.{js,css,woff2}', 'characters/*.webp'],
+        globPatterns: ['index.html', 'favicon.svg', 'assets/*.{js,css,woff2}', 'characters/*.webp', 'characters/accessories/*.webp'],
         globIgnores: ['**/reference/**', 'icons/**', 'splash/**', '**/*.map'],
       },
       // Never a service worker in `pnpm dev`: it would cache dev files.

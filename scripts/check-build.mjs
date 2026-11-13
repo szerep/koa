@@ -78,8 +78,9 @@ export const SPLASH_LIMITS = {
 
 /**
  * The service worker's precache (Phase 9 Step 3): exactly the app shell, every hashed JS, CSS
- * and font file in assets/, the favicon, the manifest and the four Koa frames. Never icons,
- * splash screens, reference files, source maps, hosting files or the worker itself.
+ * and font file in assets/, the favicon, the manifest, the four Koa frames and the approved
+ * accessory frames (Phase 11). Never icons, splash screens, reference files, source maps,
+ * hosting files or the worker itself.
  */
 export const PRECACHE_FIXED = [
   'index.html',
@@ -89,6 +90,9 @@ export const PRECACHE_FIXED = [
   'characters/koa_idle_neutral-512.webp',
   'characters/koa_idle_blink.webp',
   'characters/koa_idle_blink-512.webp',
+  // Phase 11: approved accessory frames (offline, like the Koa frames).
+  'characters/accessories/beanie@idle.webp',
+  'characters/accessories/beanie@idle-512.webp',
 ]
 
 /** Files in assets/ that must all be precached (JS, CSS, fonts). */

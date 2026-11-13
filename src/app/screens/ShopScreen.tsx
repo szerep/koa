@@ -12,7 +12,8 @@ import {
 } from '../../core/shop/shop'
 import { KoaCompanion } from '../../features/koala/KoaCompanion'
 import { koalaStore } from '../../features/koala/store'
-import { hasAccessoryArt } from '../../features/koala/manifest'
+import { accessoryPreview, hasAccessoryArt } from '../../features/koala/manifest'
+import { AccessoryThumb } from '../../features/koala/AccessoryThumb'
 import { walletStore } from '../../features/rewards/store'
 import { wardrobeStore } from '../../features/shop/store'
 import { Button } from '../../ui/Button'
@@ -239,10 +240,16 @@ function ItemCard({ item, owned, equipped, missing, onBuy, onToggleWear }: ItemC
     )
   }
 
+  const preview = accessoryPreview(item.id)
+
   return (
     <article ref={card} className={`item-card${equipped ? ' is-equipped' : ''}`}>
       <div className="item-card__art">
-        <span className="item-card__swatch" style={{ background: item.swatch }} aria-hidden="true" />
+        {preview ? (
+          <AccessoryThumb frame={preview.frame} box={preview.box} sizes="(min-width: 960px) 150px, (min-width: 600px) 18vw, 24vw" />
+        ) : (
+          <span className="item-card__swatch" style={{ background: item.swatch }} aria-hidden="true" />
+        )}
         {!hasAccessoryArt(item.id) && <span className="item-card__art-status">Artwork coming soon</span>}
         {owned && <span className="item-card__owned">Owned</span>}
       </div>

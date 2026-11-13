@@ -1,0 +1,24 @@
+/*
+ * A crop of an accessory's overlay frame, used as its Shop picture. The frame is the full
+ * 1024×1536 canvas; the custom properties (set by AccessoryThumb) place the item's box in view.
+ */
+.accessory-thumb {
+  position: relative;
+  display: block;
+  width: 62%;
+  aspect-ratio: var(--thumb-aspect);
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.accessory-thumb__img {
+  position: absolute;
+  left: var(--thumb-img-left);
+  top: var(--thumb-img-top);
+  width: var(--thumb-img-w);
+  max-width: none;
+  height: auto;
+}

@@ -77,6 +77,12 @@ export type AccessoryArt =
       /** `back` draws behind the koala (e.g. a headphone band behind the head). */
       layer: 'front' | 'back'
       frames: Partial<Record<KoalaPoseName, KoalaFrame>>
+      /**
+       * Where the item sits in its idle frame (canvas pixels, 8 px padding included), measured
+       * from the exported file. The Shop card shows this crop of the same frame as the item's
+       * picture (no extra asset), and Koa's speech bubble clears anything above the figure box.
+       */
+      bounds?: FigureBox
     }
   | {
       kind: 'outfit'
@@ -89,8 +95,44 @@ export const accessoryFrame = (itemId: string, pose: KoalaPoseName): KoalaFrame 
   srcSmall: `/characters/accessories/${itemId}@${pose}-512.webp`,
 })
 
-/** Add an entry here when an item's artwork is delivered. Empty until then. */
-export const accessoryArt: Readonly<Record<string, AccessoryArt>> = {}
+/**
+ * Add an entry here when an item's artwork is delivered and approved (Phase 11).
+ * Items without an entry are not drawn.
+ */
+export const accessoryArt: Readonly<Record<string, AccessoryArt>> = {
+  // Phase 11 Step 1 (beanie_v02, approved 2026-11-13): drawn above the base and blink frames.
+  beanie: {
+    kind: 'overlay',
+    layer: 'front',
+    frames: { idle: accessoryFrame('beanie', 'idle') },
+    // Measured from beanie@idle.webp (opaque x 297–723, y 464–767), plus 8 px.
+    bounds: { x: 289, y: 456, width: 443, height: 320 },
+  },
+}
+
+/** Where the Shop card crops an item's idle frame, or null when it has no art (or no crop). */
+export const accessoryPreview = (itemId: string): { frame: KoalaFrame; box: FigureBox } | null => {
+  const art = accessoryArt[itemId]
+  if (art?.kind !== 'overlay' || !art.bounds || !art.frames.idle) return null
+  return { frame: art.frames.idle, box: art.bounds }
+}
+
+/**
+ * How far (canvas pixels) worn overlay art reaches above the pose's figure box: a hat's
+ * pom-pom draws above the head, so Koa's speech bubble moves up by this much.
+ */
+export const headroomAbove = (wearing: readonly string[], pose: KoalaPoseName = 'idle'): number =>
+  Math.max(
+    0,
+    ...wearing.map((id) => {
+      const art = accessoryArt[id]
+      return art?.kind === 'overlay' && art.frames[pose] && art.bounds ? koalaPoses[pose].figure.y - art.bounds.y : 0
+    }),
+  )
+
+/** The same headroom as a share of the figure's height: Koa's speech bubble moves up by it (0 = no lift). */
+export const bubbleLiftPercent = (wearing: readonly string[], pose: KoalaPoseName = 'idle'): number =>
+  (headroomAbove(wearing, pose) / koalaPoses[pose].figure.height) * 100
 
 export const hasAccessoryArt = (itemId: string, pose: KoalaPoseName = 'idle'): boolean => {
   const art = accessoryArt[itemId]

@@ -45,7 +45,7 @@ Roles and accessible names only (`getByRole`, `getByText` for visible copy), the
 
 Direct storage reads are limited to two places where the UI makes a promise it can't show: the export file's content, and the existence of the `koa:backup:reset` backup the reset message mentions.
 
-## Coverage (25 tests × 3 projects = 75 runs)
+## Coverage (25 tests × 3 projects = 75 runs; 26 / 78 since Phase 11 Step 1)
 
 | File | Tests | Journeys |
 |---|---|---|
@@ -85,3 +85,5 @@ After Step 2 the full 75-run suite has not been run as a whole yet: `accessibili
 - **Cross-tab sync** (the `storage` event) isn't covered.
 - **Real-time UI timeouts** (the shop's 3.5 s buy confirmation and toasts) run on real timers, since only `Date` is pinned; the tests act well within them and don't test the expiry.
 - WebKit on Windows is slower (the longest journeys take ~15 s there), hence the 60 s test and 10 s assertion timeouts.
+
+**Phase 11 Step 1 (the beanie, `docs/phase-11/step-1-beanie.md` §6):** one test added to `shop.e2e.ts`: the beanie's card shows its artwork (not the swatch; the sand cap keeps its swatch and "Artwork coming soon"), buying it puts it on Koa, and on Home a speech bubble's tail tip sits above the pom-pom. The bubble and the decorative picture have no role or name, so this test uses their classes (`.koa-bubble`, `.accessory-thumb img`). Now 26 tests × 3 projects = 78 runs.

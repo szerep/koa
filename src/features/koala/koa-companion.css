@@ -16,6 +16,15 @@
   z-index: 2;
 }
 
+/*
+ * A worn hat reaching above the head (the beanie's pom-pom): --bubble-lift (set by KoaCompanion)
+ * is how far, as a share of Koa's height. The bubble then sits on top of the hat, its tail tip
+ * just clear of it (the tail hangs 5 px below the bubble), instead of tucking into the fur.
+ */
+.koa-bubble-anchor--over-hat {
+  bottom: calc(100% + var(--bubble-lift) + 7px);
+}
+
 .koa-bubble {
   grid-area: 1 / 1;
   position: relative;
