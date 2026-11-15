@@ -87,3 +87,5 @@ After Step 2 the full 75-run suite has not been run as a whole yet: `accessibili
 - WebKit on Windows is slower (the longest journeys take ~15 s there), hence the 60 s test and 10 s assertion timeouts.
 
 **Phase 11 Step 1 (the beanie, `docs/phase-11/step-1-beanie.md` §6):** one test added to `shop.e2e.ts`: the beanie's card shows its artwork (not the swatch; the sand cap keeps its swatch and "Artwork coming soon"), buying it puts it on Koa, and on Home a speech bubble's tail tip sits above the pom-pom. The bubble and the decorative picture have no role or name, so this test uses their classes (`.koa-bubble`, `.accessory-thumb img`). Now 26 tests × 3 projects = 78 runs.
+
+**Phase 11 Step 2 (the round glasses, `docs/phase-11/step-2-round-glasses.md` §11):** one test added to `shop.e2e.ts`: after two paid sessions (290 coins), the Glasses tab's card shows the glasses artwork (no swatch, no "Artwork coming soon"), buying them puts them on Koa, and on Home the glasses frame is decoded, stacked after the base and blink frames, and on exactly their box (all layers measured in one frame, since Koa breathes). Now 27 tests × 3 projects = 81 runs, **81 / 81** passing.

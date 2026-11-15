@@ -137,4 +137,58 @@ test.describe('shop', () => {
     const pomTop = frame.y + (464 / 1536) * frame.height
     expect(box.y + box.height + 5).toBeLessThanOrEqual(pomTop + 0.5)
   })
+
+  test('the round glasses show their own artwork in the shop and sit on Koa’s face, over the same frame', async ({ page }) => {
+    await openKoa(page)
+    await earn170(page)
+    await runSession(page, 5) // the short break
+    await runSession(page, 120) // 120 more (the daily goal is already paid): 290
+    await expectCoins(page, 290)
+    await goTo(page, 'Shop')
+    await openCategory(page, 'Glasses')
+
+    // Its card shows the approved glasses art (a crop of the frame Koa wears), not the swatch.
+    const glasses = itemCard(page, 'Round glasses')
+    const picture = glasses.locator('.accessory-thumb img')
+    await expect(picture).toHaveAttribute('src', '/characters/accessories/round-glasses@idle.webp')
+    await expect(picture).toHaveJSProperty('complete', true)
+    await expect(glasses.locator('.item-card__swatch')).toHaveCount(0)
+    await expect(glasses).not.toContainText('Artwork coming soon')
+
+    await glasses.getByRole('button', { name: 'Buy Round glasses for 180 coins' }).click()
+    await glasses.getByRole('button', { name: 'Buy for 180?' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Round glasses is yours. Koa is wearing it now.' })).toBeVisible()
+    await expect(glasses).toContainText('Owned')
+
+    // On Home, Koa wears them: the glasses frame is stacked above the base and blink frames, on the same box.
+    await goTo(page, 'Home')
+    const koa = page.getByRole('button', { name: 'Koa the koala. Tap to say hi.' })
+    const worn = koa.locator('img[src="/characters/accessories/round-glasses@idle.webp"]')
+    await expect(worn).toHaveJSProperty('complete', true)
+    expect(await worn.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0)
+    // Koa breathes (the frames share one animated container), so all layers are measured in the same frame.
+    const boxes = await koa.locator('img').evaluateAll((imgs) =>
+      imgs.map((i) => {
+        const r = i.getBoundingClientRect()
+        return { src: i.getAttribute('src'), x: r.x, y: r.y, width: r.width, height: r.height }
+      }),
+    )
+    const box = (src: string) => {
+      const found = boxes.find((b) => b.src === src)
+      if (!found) throw new Error(`missing ${src}`)
+      return found
+    }
+    const w = box('/characters/accessories/round-glasses@idle.webp')
+    for (const other of [box('/characters/koa_idle_neutral.webp'), box('/characters/koa_idle_blink.webp')]) {
+      expect(Math.abs(w.x - other.x)).toBeLessThan(0.5)
+      expect(Math.abs(w.y - other.y)).toBeLessThan(0.5)
+      expect(Math.abs(w.width - other.width)).toBeLessThan(0.5)
+      expect(Math.abs(w.height - other.height)).toBeLessThan(0.5)
+    }
+    // Paint order: base, blink, then the glasses.
+    const order = await koa.locator('img').evaluateAll((imgs) => imgs.map((i) => i.getAttribute('src')))
+    expect(order.indexOf('/characters/accessories/round-glasses@idle.webp')).toBeGreaterThan(
+      order.indexOf('/characters/koa_idle_blink.webp'),
+    )
+  })
 })

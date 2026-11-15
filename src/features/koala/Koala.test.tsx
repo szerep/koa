@@ -37,8 +37,41 @@ describe('Koala accessory layering (Phase 11)', () => {
     expect(beanie).toContain('alt=""')
   })
 
+  it('draws the round glasses above the base and the blink frame, in both sizes, decorative', () => {
+    const html = render({ wearing: ['round-glasses'] })
+    expect(imageSources(html)).toEqual([
+      '/characters/koa_idle_neutral.webp',
+      '/characters/koa_idle_blink.webp',
+      '/characters/accessories/round-glasses@idle.webp',
+    ])
+    const glasses = html.match(/<img\b[^>]*round-glasses@idle\.webp"[^>]*>/)?.[0]
+    expect(glasses).toContain(
+      'srcSet="/characters/accessories/round-glasses@idle-512.webp 512w, /characters/accessories/round-glasses@idle.webp 1024w"',
+    )
+    expect(glasses).toContain('alt=""')
+  })
+
+  it('keeps the round glasses on top while the eyes are closed (blink frame shown)', () => {
+    const html = render({ wearing: ['round-glasses'], eyesClosed: true })
+    expect(imageSources(html)).toEqual([
+      '/characters/koa_idle_neutral.webp',
+      '/characters/koa_idle_blink.webp',
+      '/characters/accessories/round-glasses@idle.webp',
+    ])
+    expect(html).toMatch(/<img class="koala__img koala__img--blink is-soft"[^>]*style="opacity:1"/)
+  })
+
+  it('draws the beanie and the round glasses together', () => {
+    expect(imageSources(render({ wearing: ['beanie', 'round-glasses'] }))).toEqual([
+      '/characters/koa_idle_neutral.webp',
+      '/characters/koa_idle_blink.webp',
+      '/characters/accessories/beanie@idle.webp',
+      '/characters/accessories/round-glasses@idle.webp',
+    ])
+  })
+
   it('draws nothing for items without artwork', () => {
-    expect(imageSources(render({ wearing: ['round-glasses', 'cap'] }))).toEqual([
+    expect(imageSources(render({ wearing: ['knit-scarf', 'cap'] }))).toEqual([
       '/characters/koa_idle_neutral.webp',
       '/characters/koa_idle_blink.webp',
     ])

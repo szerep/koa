@@ -108,6 +108,15 @@ export const accessoryArt: Readonly<Record<string, AccessoryArt>> = {
     // Measured from beanie@idle.webp (opaque x 297–723, y 464–767), plus 8 px.
     bounds: { x: 289, y: 456, width: 443, height: 320 },
   },
+  // Phase 11 Step 2 (round-glasses_v05, approved 2026-11-16): drawn above the base and blink frames,
+  // with open lenses (the eyes and the blink show through). Shares no pixels with the beanie.
+  'round-glasses': {
+    kind: 'overlay',
+    layer: 'front',
+    frames: { idle: accessoryFrame('round-glasses', 'idle') },
+    // Measured from round-glasses@idle.webp (opaque x 329–694, y 747–888), plus 8 px.
+    bounds: { x: 321, y: 739, width: 382, height: 158 },
+  },
 }
 
 /** Where the Shop card crops an item's idle frame, or null when it has no art (or no crop). */

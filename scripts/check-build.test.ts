@@ -137,7 +137,7 @@ describe('checkNotFoundPage', () => {
 })
 
 describe('checkPrecache', () => {
-  /** A build like today's: shell, hashed assets, the 4 Koa frames and the 2 beanie frames, plus files that are never precached. */
+  /** A build like today's: shell, hashed assets, the 4 Koa frames and the 4 accessory frames, plus files that are never precached. */
   const build = [
     ...PRECACHE_FIXED.map((p) => file(p, 10_000)),
     file('assets/index-abc.js', 460_000),
@@ -161,7 +161,7 @@ describe('checkPrecache', () => {
   it('accepts exactly the expected entries and sums their size', () => {
     const { errors, bytes } = checkPrecache(good, build)
     expect(errors).toEqual([])
-    expect(bytes).toBe(9 * 10_000 + 460_000 + 5_000 + 32_000 + 30_000 + 31_000)
+    expect(bytes).toBe(11 * 10_000 + 460_000 + 5_000 + 32_000 + 30_000 + 31_000)
   })
 
   it('fails without a precache list', () => {
@@ -169,18 +169,20 @@ describe('checkPrecache', () => {
     expect(checkPrecache([], build).errors[0]).toContain('no precache list')
   })
 
-  it('lists the shell, the 4 Koa frames and exactly the approved accessory frames (beanie)', () => {
-    expect(PRECACHE_FIXED).toHaveLength(9)
+  it('lists the shell, the 4 Koa frames and exactly the approved accessory frames (beanie, round glasses)', () => {
+    expect(PRECACHE_FIXED).toHaveLength(11)
     expect(PRECACHE_FIXED.filter((p) => p.startsWith('characters/accessories/'))).toEqual([
       'characters/accessories/beanie@idle.webp',
       'characters/accessories/beanie@idle-512.webp',
+      'characters/accessories/round-glasses@idle.webp',
+      'characters/accessories/round-glasses@idle-512.webp',
     ])
   })
 
   it('rejects an accessory frame that is not approved yet', () => {
-    const glasses = 'characters/accessories/round-glasses@idle.webp'
-    const { errors } = checkPrecache([...good, glasses], [...build, file(glasses)])
-    expect(errors).toEqual([`precache: ${glasses} is not an expected entry`])
+    const scarf = 'characters/accessories/knit-scarf@idle.webp'
+    const { errors } = checkPrecache([...good, scarf], [...build, file(scarf)])
+    expect(errors).toEqual([`precache: ${scarf} is not an expected entry`])
   })
 
   it('requires the shell, the manifest, the favicon, every Koa frame and every accessory frame', () => {

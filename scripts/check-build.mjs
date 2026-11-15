@@ -93,6 +93,8 @@ export const PRECACHE_FIXED = [
   // Phase 11: approved accessory frames (offline, like the Koa frames).
   'characters/accessories/beanie@idle.webp',
   'characters/accessories/beanie@idle-512.webp',
+  'characters/accessories/round-glasses@idle.webp',
+  'characters/accessories/round-glasses@idle-512.webp',
 ]
 
 /** Files in assets/ that must all be precached (JS, CSS, fonts). */

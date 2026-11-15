@@ -29,3 +29,16 @@ describe('AccessoryThumb (Shop picture)', () => {
     expect(html).toContain('alt=""')
   })
 })
+
+describe('AccessoryThumb for the round glasses', () => {
+  const preview = accessoryPreview('round-glasses')
+  if (!preview) throw new Error('the round glasses have no preview')
+  const html = renderToStaticMarkup(<AccessoryThumb frame={preview.frame} box={preview.box} sizes="(min-width: 600px) 18vw, 24vw" />)
+
+  it('reuses the approved round-glasses frames and crops them to the glasses box', () => {
+    expect(html).toContain('src="/characters/accessories/round-glasses@idle.webp"')
+    expect(html).toContain('--thumb-aspect:382 / 158')
+    expect(html).toContain(`--thumb-img-left:${(-321 / 382) * 100}%`)
+    expect(html).toContain(`--thumb-img-top:${(-739 / 158) * 100}%`)
+  })
+})

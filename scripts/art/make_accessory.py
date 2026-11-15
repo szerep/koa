@@ -56,7 +56,28 @@ ITEMS = {
         "min_sat": 0.14,
         "swatch": (0x8D, 0xA4, 0x7C),  # catalog swatch (src/config/catalog.ts), compared only
     },
+    # Phase 11 Step 2 (docs/phase-11/step-2-round-glasses.md §4, approved 2026-11-13).
+    "round-glasses": {
+        "kind": "glasses",
+        # Allowed region: across the face between the cheeks, from below the brows to above the
+        # mouth. Rims around the eyes fit inside; arms reaching for the ears or frames climbing
+        # into the brows fail the region check instead of being cut.
+        "region": (230, 740, 795, 940),
+        # The frame's color family: warm dark brown (#3a2b22 is hue 22°, saturation 0.41).
+        "hue": (0, 50),
+        "min_sat": 0.18,
+        "swatch": (0x3A, 0x2B, 0x22),
+        # Review close-up on the house grid (y0, y1, x0, x1): the face, eyes at y 821.
+        "closeup": (640, 1010, 170, 854),
+        # A hollow outline: the lens openings are holes in the frame, not part of the item, so the
+        # cut never fills enclosed regions, keeps only changed pixels, and on a Master-preserved
+        # candidate counts every exact difference from the Master as changed (see cut_item and
+        # exact_changes). Every check is the same as for the beanie.
+        "hollow": True,
+    },
 }
+# The review close-up for items without their own: the head (house grid y0, y1, x0, x1).
+HEAD_CLOSEUP = (380, 900, 170, 854)
 TUFT_BOX = (420, 530, 620, 640)  # the crown tuft and the top of the crown, Master pixels
 
 
@@ -210,12 +231,72 @@ def color_report(item, overlay):
 
 # ------------------------------------------------------------------------------------------ extract
 
+def region_mask(cfg, shape):
+    x0, y0, x1, y1 = cfg["region"]
+    region = np.zeros(shape, bool)
+    region[y0:y1, x0:x1] = True
+    return region
+
+
+def exact_changes(cfg, cand, master, scale, dx, dy, resized):
+    """Hollow items only: pixels where a Master-preserved candidate differs from the Master at all.
+
+    A frame crossing a part of the Master in its own colors (the glasses' bridge over the dark nose)
+    can differ by less than the 28-level threshold. When the candidate sits on the Master exactly
+    (same size, alignment scale 1 and no shift), the raw candidate is compared with the Master byte
+    for byte (RGBA), so any genuine edit counts. Comparing the resampled candidate instead would
+    count resampling noise. Returns None (threshold only) for solid items or any other alignment.
+    """
+    if not cfg.get("hollow", False) or resized or scale != 1.0 or dx != 0 or dy != 0:
+        return None
+    return np.any(cand != master, axis=-1)
+
+
+def cut_item(cfg, changed, item_color, a_c):
+    """Cut the item out of the aligned candidate: returns (solid mask, overlay alpha 0..1), or None.
+
+    `changed` marks pixels that differ from the Master, `item_color` pixels in the item's colors,
+    `a_c` is the candidate's alpha. A solid item (the beanie) has its enclosed regions filled, so
+    knit texture that happens to match the fur can't punch holes in it. A hollow item
+    (`"hollow": True`, the round glasses) is an outline: enclosed regions (the lens openings) are
+    left alone and only changed pixels are kept, so the Master shows through the openings; its
+    edge feather stays on those pixels, so no unchanged Master pixel joins the overlay.
+    """
+    hollow = cfg.get("hollow", False)
+    fill = (lambda m: m) if hollow else ndimage.binary_fill_holes
+    region = region_mask(cfg, changed.shape)
+    core = changed & item_color & region
+    core = ndimage.binary_opening(core, iterations=2)
+    core = ndimage.binary_closing(core, iterations=6)
+    labels, n = ndimage.label(core)
+    if n == 0:
+        return None
+    sizes = ndimage.sum(core, labels, range(1, n + 1))
+    keep = [i + 1 for i, s in enumerate(sizes) if s >= max(800, 0.02 * sizes.max())]
+    solid = fill(np.isin(labels, keep))
+    # Grow a little into the changed, non-fur edge pixels (knit shading, the brim's dark rim).
+    grown = ndimage.binary_dilation(solid, iterations=3) & changed & region
+    solid = fill(solid | grown) & region & (a_c > 0.02)
+    if hollow:
+        # Only pixels the edit actually changed: the closing never bridges unchanged Master pixels in.
+        solid &= changed
+    soft = ndimage.gaussian_filter(solid.astype(np.float64), 0.9)
+    soft = np.where(ndimage.binary_erosion(solid, iterations=2), 1.0, soft)
+    out_a = np.clip(soft, 0, 1) * a_c
+    out_a[~region] = 0
+    if hollow:
+        out_a[~solid] = 0
+    # The eye region is never cleared here: an item over the eyes must fail the check, not get a hole.
+    return solid, out_a
+
+
 def extract(item, candidate_path, art_dir, review_dir):
     cfg = ITEMS[item]
     master = load_rgba(MASTER)
     blink = load_rgba(MASTER_BLINK)
     cand_img = Image.open(candidate_path).convert("RGBA")
-    if cand_img.size != (1024, 1536):
+    resized = cand_img.size != (1024, 1536)
+    if resized:
         ratio = cand_img.size[0] / cand_img.size[1]
         if abs(ratio - 1024 / 1536) > 0.005:
             sys.exit(f"candidate is {cand_img.size}; it must be a 2:3 portrait edit of the Master")
@@ -247,27 +328,25 @@ def extract(item, candidate_path, art_dir, review_dir):
     diff = np.max(np.abs(aligned[..., :3] - master[..., :3]), axis=-1)
     newly_item = item_color & ~(is_item_color(master[..., :3]) & (a_m > 0.5))
     changed = (((diff > 28) | newly_item) & (a_c > 0.5)) | ((a_c > 0.5) & (a_m < 0.5))
+    # Hollow items on a Master-preserved candidate: the pixels that actually differ from the Master
+    # replace the thresholded (resampled) comparison. Every pixel over the threshold differs exactly
+    # too, and no unchanged Master pixel can be picked by resampling noise. The spill check below
+    # keeps using `changed` exactly as before.
+    picked = changed
+    exact = exact_changes(cfg, cand, master, scale, dx, dy, resized)
+    if exact is not None:
+        picked = exact & (a_c > 0.5)
+        print(f"[{item}] exact Master comparison: {int(exact.sum())} px differ from the Master "
+              f"({int((picked & ~changed).sum())} of them not picked by the 28-level threshold)")
+    elif cfg.get("hollow", False):
+        print(f"[{item}] exact Master comparison: not available (the candidate doesn't sit on the "
+              f"Master exactly); the 28-level threshold applies")
 
-    x0, y0, x1, y1 = cfg["region"]
-    region = np.zeros_like(changed)
-    region[y0:y1, x0:x1] = True
-    core = changed & item_color & region
-    core = ndimage.binary_opening(core, iterations=2)
-    core = ndimage.binary_closing(core, iterations=6)
-    labels, n = ndimage.label(core)
-    if n == 0:
+    region = region_mask(cfg, changed.shape)
+    cut = cut_item(cfg, picked, item_color, a_c)
+    if cut is None:
         sys.exit(f"[{item}] no {item} pixels found in the candidate (is it an edit of the Master?)")
-    sizes = ndimage.sum(core, labels, range(1, n + 1))
-    keep = [i + 1 for i, s in enumerate(sizes) if s >= max(800, 0.02 * sizes.max())]
-    solid = ndimage.binary_fill_holes(np.isin(labels, keep))
-    # Grow a little into the changed, non-fur edge pixels (knit shading, the brim's dark rim).
-    grown = ndimage.binary_dilation(solid, iterations=3) & changed & region
-    solid = ndimage.binary_fill_holes(solid | grown) & region & (a_c > 0.02)
-    soft = ndimage.gaussian_filter(solid.astype(np.float64), 0.9)
-    soft = np.where(ndimage.binary_erosion(solid, iterations=2), 1.0, soft)
-    out_a = np.clip(soft, 0, 1) * a_c
-    out_a[~region] = 0
-    # The eye region is never cleared here: an item over the eyes must fail the check, not get a hole.
+    solid, out_a = cut
 
     overlay = aligned.copy()
     overlay[..., 3] = out_a * 255
@@ -288,7 +367,7 @@ def extract(item, candidate_path, art_dir, review_dir):
     review_dir.mkdir(parents=True, exist_ok=True)
     h, w = master.shape[:2]
     mask_view = flat((0, 0, 0), h, w)
-    mask_view[changed] = [90, 90, 90, 255]
+    mask_view[picked] = [90, 90, 90, 255]
     mask_view[solid] = [141, 164, 124, 255]
     panels = [
         over(aligned, checker(h, w)),
@@ -434,12 +513,13 @@ def review(item, public_dir, review_dir):
             row.paste(im, (x, 0))
             x += im.width + 12
         rows.append(row)
-    # Head close-up at 1:1 of the 1024 export: Master vs with the item vs blink with the item.
+    # Close-up at 1:1 of the 1024 export (the head, or the item's own window): Master vs with the item vs blink with the item.
     neutral = webp(chars / "koa_idle_neutral.webp")
     blink = webp(chars / "koa_idle_blink.webp")
     acc = webp(public_dir / f"{item}@idle.webp")
     h, w = neutral.shape[:2]
-    head = (slice(380, 900), slice(170, 854))
+    y0, y1, x0, x1 = ITEMS[item].get("closeup", HEAD_CLOSEUP)
+    head = (slice(y0, y1), slice(x0, x1))
     close = [
         label(to_image(over(neutral, flat(CREAM, h, w))[head]).convert("RGB"), "close-up: Master"),
         label(to_image(over(acc, over(neutral, flat(CREAM, h, w)))[head]).convert("RGB"), f"close-up: {item} + idle"),
