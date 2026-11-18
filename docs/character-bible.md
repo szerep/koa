@@ -163,7 +163,7 @@ Accessories are **separate transparent images stacked on the pose image**. Each 
   - `outfit` items (hoodie recolors) replace the pose's base and blink frames.
 - **Slots:** each shop item has one slot (`head`, `face`, `neck`, `ear` or `body`), and Koa wears one item per slot.
 - **Poses:** an item without a frame for the current pose is simply not drawn in that pose. Pose-specific variants (`<id>@rest`) can be added item by item.
-- **Missing art is never substituted.** As of Phase 6, **no accessory artwork exists**. The full list of required files is in `docs/phase-6/accessory-assets.md`.
+- **Missing art is never substituted.** As of Phase 6, no accessory artwork existed; since Phase 11 **only the beanie and the round glasses have approved artwork** (idle front overlays), and the other seven items are drawn nowhere. The full list of required files is in `docs/phase-6/accessory-assets.md`.
 - **Clothes = hoodie recolors (option A, approved).** Each colorway needs a full pose set: a base and a blink frame per pose.
   - **Deferred decision:** the recolors *could* be made the way the blink frame was, by recoloring only the hoodie region of the approved Master in code. That counts as new character art, so it waits for explicit approval.
   - The rejected options were B (overlays worn over the hoodie) and C (a hoodie-less base koala).

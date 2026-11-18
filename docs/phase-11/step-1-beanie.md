@@ -1,6 +1,8 @@
 # Phase 11 · Step 1: the beanie
 
-**Status (2026-11-13): `beanie_v02` is approved (owner's visual review of `art/review-phase11/beanie_review.png`) and wired (section 5). One open item: the speech bubble covers the pom-pom on Home (section 5). Not committed.**
+**Status (2026-11-18): complete.** `beanie_v02` is approved, wired (section 5), and has the two follow-up UI fixes (section 6: the speech bubble clears the pom-pom; the Shop card shows the beanie). Step 1 was approved and committed as `cc877cd` and is live in production (now `d8a40b4`, which includes it). The short-screen bubble/leaf-marker overlap is an accepted trade-off (section 6).
+
+*Earlier status (2026-11-13), kept as history:* **`beanie_v02` is approved (owner's visual review of `art/review-phase11/beanie_review.png`) and wired (section 5). One open item: the speech bubble covers the pom-pom on Home (section 5). Not committed.**
 - `beanie_v01` **failed** `extract` (region): the cuff's ends dropped below y = 790 at the temples (lowest y 841 at x 240, 820 at x 760; 3608 px past the line; 0 px in the eye/blink region). Its median color rgb(157, 154, 116) also leaned olive. Rejected; no rules changed.
 - `beanie_v02` **passed** `extract` and `export` (eyes, region, tuft ≥ 97%, not cropped): scale 1.000, shift (0, 0), body mismatch 5.2 gray levels; 87,718 overlay px; median rgb(150, 151, 119) vs swatch rgb(141, 164, 124) (judged in review). WebPs 21.7 kB (1024) and 10.0 kB (512). `pnpm build` (check-build OK, precache still 18 entries / 968.4 kB: the beanie is not precached until wiring), `pnpm test` (635) and `pnpm lint` pass. Wiring would bring the precache to about 1000 kB (budget 1200 kB).
 
@@ -66,7 +68,7 @@ python -I scripts/art/make_accessory.py review beanie
 
 **Dry run (2026-11-12), outside the repository:** the pipeline was tested on a synthetic input (a flat sage shape pasted on the Master, shifted by (6, −4) px and flattened on cream, kept only in a temporary folder, never in `art/` or `public/`). Results: shift recovered exactly, body mismatch 0.6 levels; the export lines up with `normalize_export.py`'s own crop-and-resize within 1 level (99th percentile); WebPs 14.7 kB and 5.9 kB. A shape reaching over the eyes and one leaving the tuft uncovered were both **rejected** with nothing written. One defect found and fixed: sage can be within 26 levels per channel of the warm grey fur, so "changed" now also includes pixels that newly have the item's hue.
 
-## 3. Wiring once the beanie is approved (not done yet)
+## 3. Wiring once the beanie is approved (the plan; carried out in section 5)
 
 Only after the review sheet is approved:
 1. `src/features/koala/manifest.ts`: `accessoryArt = { beanie: { kind: 'overlay', layer: 'front', frames: { idle: accessoryFrame('beanie', 'idle') } } }`. The Home companion, the Shop preview and the Shop's "Artwork coming soon" label pick it up with no other change.
@@ -120,6 +122,7 @@ Requested by the owner after section 5. The beanie artwork, its coordinates and 
 
   Before the fix the bubble covered the pom-pom by 35 px (390×844). Idle and blink checked at 390×844: the bubble sits above the pom-pom in both.
 - **Known trade-off (for the owner):** on short screens there isn't room for a bubble between the pom-pom and the top of the ring. On the iPhone SE (and with a wide line in phone landscape), the lifted bubble covers the ring's leaf marker and the top of the ring while it's showing. Bubbles are short-lived and never shown during focus. Removing it would need moving Koa or the bubble's placement (e.g. beside the head), which this fix was asked not to do.
+- **Accepted (recorded 2026-11-18):** this trade-off was written down as known in this section, the roadmap and `CLAUDE.md` when Step 1 was approved and committed (`cc877cd`) with the fix as it is, and nothing was changed afterwards. It's recorded here as an accepted trade-off of the Step 1 approval, confirmed by the owner when Phase 11 was closed (2026-11-18). Revisiting it would mean moving Koa or the bubble's placement, a separate layout decision outside Phase 11.
 
 **2. The Shop card shows the beanie itself.**
 - New `AccessoryThumb` (`src/features/koala/AccessoryThumb.tsx` + `accessory-thumb.css`): shows the `bounds` crop of the item's own idle frame (the same precached `beanie@idle.webp` / `-512.webp`, chosen by `srcSet`), 62% of the card's art area, decorative (`aria-hidden`, `alt=""`). `accessoryPreview(id)` returns the frame and box, or null.

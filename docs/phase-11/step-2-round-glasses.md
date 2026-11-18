@@ -1,6 +1,8 @@
 # Phase 11 · Step 2: the round glasses
 
-**Status (2026-11-13): the §4 pipeline additions are approved and made; `round-glasses_v01` failed the pipeline; `round-glasses_v02` passes every check but has visible defects; `round-glasses_v03` failed the eye check (§6); the owner approved a hollow cut for the glasses (§7, made and tested); `round-glasses_v04` was rejected by the owner (§8); `round-glasses_v05` (the Master plus v04's frame pixels, built deterministically) passes every check; with the approved exact-difference selection for hollow items (§10) its overlay holds the complete frame. **v05 was approved by the owner (2026-11-16) and is wired into the app (§11); committed in the Step 2 commit.** No candidate is approved; nothing is in `public/` or wired.** No glasses artwork exists yet, `scripts/art/make_accessory.py` is unchanged, and nothing is wired into the app (no manifest entry, no precache change, nothing in `public/`). App integration waits for the owner's visual approval of the review sheet. No other accessory is started.
+**Status (2026-11-18): complete.** `round-glasses_v05` was approved by the owner (2026-11-16), wired into the app and the offline precache (§11), committed as `d8a40b4`, and is live in production (`d8a40b4`). How it got there: the §4 pipeline additions were approved and made; `round-glasses_v01` failed the pipeline; `round-glasses_v02` passed every check but had visible defects; `round-glasses_v03` failed the eye check (§6); the owner approved a hollow cut for the glasses (§7, made and tested); `round-glasses_v04` was rejected by the owner (§8); `round-glasses_v05` (the Master plus v04's frame pixels, built deterministically) passed every check, and with the approved exact-difference selection for hollow items (§10) its overlay holds the complete frame. No other accessory is started.
+
+*Earlier status (2026-11-13), kept as history:* No candidate is approved; nothing is in `public/` or wired. No glasses artwork exists yet, `scripts/art/make_accessory.py` is unchanged, and nothing is wired into the app (no manifest entry, no precache change, nothing in `public/`). App integration waits for the owner's visual approval of the review sheet.
 
 Step 1 (the beanie, `step-1-beanie.md`) is complete and committed (`cc877cd`); this step reuses its pipeline and quality bar.
 
@@ -240,7 +242,7 @@ overlay written: art/accessories/round-glasses@idle.master.png  (15074 px)
 - **Eyes:** 0 overlay px within 58 px of either eye centre. Both lens openings are transparent and enclosed (14,249 and 13,862 px).
 - **Review export:** `art/review-phase11/round-glasses/` only (14.5 kB, 8.8 kB). Review sheet: `art/review-phase11/round-glasses_review.png`.
 
-## 11. Integration (owner-approved 2026-11-16; committed in the Step 2 commit)
+## 11. Integration (owner-approved 2026-11-16; committed as `d8a40b4`)
 
 Following the beanie's pattern (`docs/phase-11/step-1-beanie.md` §3), with no artwork, extractor, validation or beanie changes:
 

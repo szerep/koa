@@ -4,7 +4,7 @@ Koa is a cozy Pomodoro timer with a koala companion. Focus sessions earn **Coins
 
 It's built as a web app for **iPhone first** (it also works on iPad and desktop browsers). It installs as an app (Add to Home Screen on iPhone and iPad, Install in Chrome and Edge) and works offline after the first visit.
 
-> **Status:** early development. Phases 1–8 of 10 are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10 is in progress: the local checks are done (Lighthouse mobile: Performance 92, Accessibility 96, Best Practices 100, median of 3; Accessibility 100 after a coin pill fix; the deployment configuration is verified and approved). Koa is deployed at **https://koa-5cl.pages.dev** (Cloudflare Pages). On an Android phone (Samsung Galaxy Note 10+, Chrome), installing, offline use, notification delivery and tap-to-open, and updates have been checked. On a Windows laptop, installing, offline use and updates in browser tabs have been checked. iPhone and iPad are **not tested yet** (no device available), so Phase 9 stays open until Koa is confirmed to install on an iPhone. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
+> **Status:** early development. Phases 1–8, 10 and 11 (accessory artwork for the beanie and the round glasses) are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10 is in progress: the local checks are done (Lighthouse mobile: Performance 92, Accessibility 96, Best Practices 100, median of 3; Accessibility 100 after a coin pill fix; the deployment configuration is verified and approved). Koa is deployed at **https://koa-5cl.pages.dev** (Cloudflare Pages). On an Android phone (Samsung Galaxy Note 10+, Chrome), installing, offline use, notification delivery and tap-to-open, and updates have been checked. On a Windows laptop, installing, offline use and updates in browser tabs have been checked. iPhone and iPad are **not tested yet** (no device available), so Phase 9 stays open until Koa is confirmed to install on an iPhone. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
 
 ## Features
 
@@ -65,7 +65,7 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 
 ## Current limitations
 
-- **Accessory artwork is not implemented yet.** You can buy and wear items, and your outfit is saved, but Koa can't show accessories until their artwork is made. Shop cards show a color swatch and "Artwork coming soon" instead. Nothing is drawn as a stand-in. The required files are listed in [`docs/phase-6/accessory-assets.md`](docs/phase-6/accessory-assets.md).
+- **Only two accessories have artwork so far: the beanie and the round glasses.** You can buy and wear every item, and your outfit is saved, but Koa can't show the other seven until their artwork is made. Their shop cards show a color swatch and "Artwork coming soon" instead. Nothing is drawn as a stand-in. The required files are listed in [`docs/phase-6/accessory-assets.md`](docs/phase-6/accessory-assets.md).
 - Koa currently has a single pose (sitting idle, plus a blink frame). Personality is expressed through gentle movement of that pose and its blink frame; study, rest, celebrate and other poses come with a later art pass.
 - The current Koa artwork is a **provisional** master with known proportion deviations from the design sheet.
 - **Notifications on iPhone and iPad** work only in the installed Home Screen app (iOS 16.4 or later), and even there nothing arrives while the phone is locked or Koa is in the background, because Koa has no push server. Desktop background tabs can delay a notification or chime by up to about a minute. Notifications go through the service worker; tapping one brings an open Koa window to the front, or opens Koa.
@@ -91,7 +91,8 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 | 7 | Koa's personality and interactions | ✅ |
 | 8 | Statistics and settings (custom durations, daily goal, stats and streaks, keep screen on, notifications, sounds, export and reset) | ✅ |
 | 9 | PWA, offline support, mobile optimization (Steps 1–9 of 10 done; Step 10: deployed, Android and Windows checks pass, iPhone and iPad not tested) | In progress |
-| 10 | Testing and polish | Planned |
+| 10 | Testing and polish | ✅ |
+| 11 | Accessory artwork (the beanie and the round glasses) | ✅ |
 
 ## Tech stack
 
