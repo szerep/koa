@@ -40,6 +40,7 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Accessible name; icon buttons have no visible text. */
   label: string
   children: ReactNode
+  ref?: Ref<HTMLButtonElement>
 }
 
 export function IconButton({ label, className, children, type = 'button', ...rest }: IconButtonProps) {

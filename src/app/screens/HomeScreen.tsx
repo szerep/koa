@@ -1,4 +1,6 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Shirt } from 'lucide-react'
+import { wornItemIds } from '../../core/shop/shop'
 import { isInProgress, type TimerMode } from '../../core/timer/engine'
 import { modeLabels } from '../../config/timerDefaults'
 import { KoaCompanion } from '../../features/koala/KoaCompanion'
@@ -6,8 +8,10 @@ import { settingsStore } from '../../features/settings/store'
 import { wardrobeStore } from '../../features/shop/store'
 import { CycleLeaves, SkipConfirm, TimerControls, TimerDisplay } from '../../features/timer/TimerFace'
 import { useTimer } from '../../features/timer/useTimer'
+import { IconButton } from '../../ui/Button'
 import { ProgressRing } from '../../ui/ProgressRing'
 import { SegmentedControl } from '../../ui/SegmentedControl'
+import { wardrobeNav } from '../navigation'
 import './home.css'
 
 const modeOptions = (Object.keys(modeLabels) as TimerMode[]).map((value) => ({
@@ -23,6 +27,14 @@ export function HomeScreen() {
   const wardrobe = useSyncExternalStore(wardrobeStore.subscribe, wardrobeStore.getState)
   const { longBreakEvery } = useSyncExternalStore(settingsStore.subscribe, settingsStore.getState)
   const inProgress = isInProgress(state)
+  // Focus is sacred: no way into the Wardrobe while a focus session runs or is paused.
+  const showWardrobeEntry = !(state.mode === 'focus' && inProgress)
+  const wardrobeEntry = useRef<HTMLButtonElement>(null)
+
+  // Back from the Wardrobe with Done: keyboard focus returns to the button that opened it.
+  useEffect(() => {
+    if (wardrobeNav.takeFocus('home')) wardrobeEntry.current?.focus()
+  }, [])
 
   const onSkip = () => {
     // Skipping a focus session that has started loses it, so ask first.
@@ -55,8 +67,19 @@ export function HomeScreen() {
           figureSizes="(min-width: 960px) 308px, (min-width: 600px) 350px, 60vw"
           interactive
           speaks
-          wearing={Object.values(wardrobe).filter((id): id is string => id !== null)}
+          wearing={wornItemIds(wardrobe)}
         />
+        {/* After Koa: it reads after Koa and stays above the corner of Koa's picture box. */}
+        {showWardrobeEntry && (
+          <IconButton
+            ref={wardrobeEntry}
+            className="home__wardrobe"
+            label="Open the wardrobe"
+            onClick={() => wardrobeNav.open('home')}
+          >
+            <Shirt />
+          </IconButton>
+        )}
       </div>
 
       <div className="home__timer">

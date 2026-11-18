@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, Shirt, X } from 'lucide-react'
 import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react'
 import { categories, catalog, itemById } from '../../config/catalog'
 import {
   isEquipped,
   isOwned,
   shortfall,
-  SLOTS,
+  wornItemIds,
   type ItemCategory,
   type ShopItem,
 } from '../../core/shop/shop'
@@ -19,6 +19,8 @@ import { wardrobeStore } from '../../features/shop/store'
 import { Button } from '../../ui/Button'
 import { CoinGlyph } from '../../ui/glyphs'
 import { SegmentedControl } from '../../ui/SegmentedControl'
+import { wardrobeNav } from '../navigation'
+import { toggleWear as toggleWearItem } from '../toggleWear'
 import './shop.css'
 
 const CONFIRM_MS = 3500
@@ -37,13 +39,20 @@ export function ShopScreen() {
   const [notice, setNotice] = useState<{ id: number; text: string } | null>(null)
   const noticeId = useRef(0)
 
-  const wearing = SLOTS.flatMap((slot) => {
-    const id = wardrobe[slot]
-    const item = id ? itemById(id) : undefined
+  const wearing = wornItemIds(wardrobe).flatMap((id) => {
+    const item = itemById(id)
     return item ? [item] : []
   })
   const wearingWithoutArt = wearing.filter((item) => !hasAccessoryArt(item.id))
   const items = catalog.filter((item) => item.category === category)
+  // The Wardrobe is offered once there's something in it.
+  const ownsSomething = catalog.some((item) => isOwned(wallet, item.id))
+  const wardrobeEntry = useRef<HTMLButtonElement>(null)
+
+  // Back from the Wardrobe with Done: keyboard focus returns to "Open wardrobe".
+  useEffect(() => {
+    if (wardrobeNav.takeFocus('shop')) wardrobeEntry.current?.focus()
+  }, [])
 
   useEffect(() => {
     if (!notice) return
@@ -68,13 +77,8 @@ export function ShopScreen() {
   }
 
   const toggleWear = (item: ShopItem) => {
-    if (isEquipped(wardrobe, item)) {
-      wardrobeStore.unequip(item.slot)
-      say(`Took off the ${item.name.toLowerCase()}.`)
-    } else if (wardrobeStore.equip(item).ok) {
-      koalaStore.showOff()
-      say(`Koa is wearing the ${item.name.toLowerCase()}.`)
-    }
+    const result = toggleWearItem(item)
+    if (result) say(result.message)
   }
 
   return (
@@ -114,6 +118,17 @@ export function ShopScreen() {
             </p>
           )}
         </div>
+        {ownsSomething && (
+          <Button
+            ref={wardrobeEntry}
+            variant="secondary"
+            className="shop__wardrobe"
+            icon={<Shirt />}
+            onClick={() => wardrobeNav.open('shop')}
+          >
+            Open wardrobe
+          </Button>
+        )}
       </section>
 
       <SegmentedControl

@@ -10,7 +10,8 @@ export interface NavItem<T extends string> {
 
 interface BottomNavProps<T extends string> {
   items: readonly NavItem<T>[]
-  current: T
+  /** The current tab, or null on a screen outside the nav (the Wardrobe): nothing is highlighted. */
+  current: T | null
   onSelect: (id: T) => void
 }
 

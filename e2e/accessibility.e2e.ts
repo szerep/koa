@@ -1,5 +1,19 @@
 import { expect, test, type Page } from '@playwright/test'
-import { MINUTE, advance, expectNoErrors, goTo, mainNav, openKoa, runSession, startSession, typeSetting, type TabName } from './support/koa.ts'
+import {
+  MINUTE,
+  advance,
+  button,
+  closetTile,
+  expectNoErrors,
+  goTo,
+  mainNav,
+  openKoa,
+  runSession,
+  startSession,
+  typeSetting,
+  wardrobeHeading,
+  type TabName,
+} from './support/koa.ts'
 
 /**
  * Phase 10 Step 2 (accessibility pass): what only a real browser can show. The rules behind these
@@ -84,6 +98,53 @@ test.describe('accessibility', () => {
         await goTo(page, tab)
         await expect.poll(() => scrollsSideways(page), `${tab} at ${viewport.width}×${viewport.height}`).toBe(false)
       }
+    }
+  })
+
+  test('the Wardrobe: its own heading and title, keyboard focus in and back, toggles that keep focus, and no sideways scroll', async ({ page }) => {
+    await openKoa(page)
+    await goTo(page, 'Settings')
+    await typeSetting(page, 'Focus', 120)
+    await goTo(page, 'Home')
+    await runSession(page, 120)
+    await goTo(page, 'Shop')
+    await buy(page, 'Sage beanie', 120)
+
+    // From the Shop: focus moves to the Wardrobe's heading, and Done brings it back.
+    await button(page, 'Open wardrobe').press('Enter')
+    await expect(wardrobeHeading(page)).toBeFocused()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Wardrobe')
+    await expect(page).toHaveTitle('Wardrobe · Koa')
+    await expect(mainNav(page).locator('[aria-current]')).toHaveCount(0)
+
+    // A tile is a toggle: Space takes the beanie off and focus stays on the same tile.
+    const beanie = closetTile(page, 'Head', 'Sage beanie')
+    await expect(beanie).toHaveAttribute('aria-pressed', 'true')
+    await beanie.press('Space')
+    await expect(beanie).toHaveAttribute('aria-pressed', 'false')
+    await expect(beanie).toBeFocused()
+    await expect(page.getByRole('status').filter({ hasText: 'Took off the sage beanie.' })).toBeAttached()
+    await page.keyboard.press('Enter')
+    await expect(beanie).toHaveAttribute('aria-pressed', 'true')
+    await expect(beanie).toBeFocused()
+
+    await button(page, 'Done').press('Enter')
+    await expect(button(page, 'Open wardrobe')).toBeFocused()
+
+    // From Home: the same, back to the shirt button.
+    await goTo(page, 'Home')
+    await button(page, 'Open the wardrobe').press('Enter')
+    await expect(wardrobeHeading(page)).toBeFocused()
+    await button(page, 'Done').press('Enter')
+    await expect(button(page, 'Open the wardrobe')).toBeFocused()
+
+    // Narrow and zoomed screens reflow without sideways scrolling, with items and while empty.
+    await button(page, 'Open the wardrobe').click()
+    for (const viewport of [{ width: 320, height: 568 }, { width: 320, height: 256 }, { width: 568, height: 320 }]) {
+      await page.setViewportSize(viewport)
+      await expect(wardrobeHeading(page)).toBeVisible()
+      await expect.poll(() => scrollsSideways(page), `Wardrobe at ${viewport.width}×${viewport.height}`).toBe(false)
+      await expect(button(page, 'Done')).toBeInViewport()
     }
   })
 

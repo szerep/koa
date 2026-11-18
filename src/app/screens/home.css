@@ -37,6 +37,28 @@
   inset: 0;
 }
 
+/*
+ * The way into the Wardrobe (Phase 12): a quiet 44 px round button in the stage's empty
+ * bottom-right corner, outside the ring and away from Koa's speech bubble (which rises above
+ * Koa's head). Placed on the stage's diagonal so its edge stays 8 px clear of the ring's outer
+ * edge at every stage size: the ring (stroke and leaf cap) reaches 0.4866 × stage from the
+ * center, so the button's center sits (0.4866 × stage + 22 + 8 px) / √2 right of and below the
+ * center. On the smallest stages it reaches a few pixels past the stage's corner, into the gap
+ * below (never as far as the timer).
+ */
+.home__wardrobe {
+  position: absolute;
+  left: calc(var(--stage) * 0.8441 - 1px);
+  top: calc(var(--stage) * 0.8441 - 1px);
+  width: 44px;
+  height: 44px;
+}
+
+.home__wardrobe svg {
+  width: 20px;
+  height: 20px;
+}
+
 /* Koa sits in the lower half of the halo; the feet overlap the ring for depth. */
 .home__koala {
   position: absolute;

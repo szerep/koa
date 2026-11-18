@@ -144,3 +144,26 @@ export async function typeSetting(page: Page, label: string, value: number) {
 }
 
 export const settingValue = (page: Page, label: string) => page.getByRole('spinbutton', { name: label, exact: true })
+
+/* Wardrobe (Phase 12) */
+
+export const wardrobeHeading = (page: Page) => page.getByRole('heading', { level: 1, name: 'Wardrobe' })
+
+/**
+ * Opens the Wardrobe the way a user would: the shirt button on Home, or "Open wardrobe" in the
+ * Shop (shown once something is owned). The caller is already on that screen.
+ */
+export async function openWardrobe(page: Page, from: 'Home' | 'Shop') {
+  await button(page, from === 'Home' ? 'Open the wardrobe' : 'Open wardrobe').click()
+  await expect(wardrobeHeading(page)).toBeVisible()
+  await expect(page).toHaveURL(/#\/wardrobe$/)
+}
+
+/**
+ * A Wardrobe tile (a toggle button) in its slot's section ("Head", "Ear"…), found by its item
+ * whether Koa is wearing it or not.
+ */
+export const closetTile = (page: Page, slot: string, itemName: string) =>
+  page
+    .getByRole('region', { name: slot, exact: true })
+    .getByRole('button', { name: new RegExp(`^(Wear|Wearing) the ${itemName.toLowerCase()}$`) })

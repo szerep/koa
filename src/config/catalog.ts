@@ -1,4 +1,4 @@
-import type { ItemCategory, ShopItem } from '../core/shop/shop'
+import type { ItemCategory, ShopItem, Slot } from '../core/shop/shop'
 
 /**
  * Shop catalog, v1: the accessory set from the reference sheet (character bible §3/§5),
@@ -98,5 +98,14 @@ export const categories: readonly { id: ItemCategory; label: string }[] = [
   { id: 'scarves', label: 'Scarves' },
   { id: 'extras', label: 'Extras' },
 ]
+
+/** Where an item goes on Koa, as the Wardrobe (Phase 12) names it. */
+export const slotLabels: Readonly<Record<Slot, string>> = {
+  head: 'Head',
+  face: 'Face',
+  neck: 'Neck',
+  ear: 'Ear',
+  body: 'Body',
+}
 
 export const itemById = (id: string) => catalog.find((item) => item.id === id)

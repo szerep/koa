@@ -11,14 +11,12 @@ import { HomeScreen } from './screens/HomeScreen'
 import { StatsScreen } from './screens/StatsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { ShopScreen } from './screens/ShopScreen'
+import { WardrobeScreen } from './screens/WardrobeScreen'
+import { isTab, ROUTES, wardrobeNav, type Route, type Tab } from './navigation'
 import { pageTitle } from './pageTitle'
 import { useHashTab } from './useHashTab'
 import { useTimerAmbience } from './useTimerAmbience'
 import './app.css'
-
-type Tab = 'home' | 'shop' | 'stats' | 'settings'
-
-const TABS = ['home', 'shop', 'stats', 'settings'] as const satisfies readonly Tab[]
 
 const navItems: readonly NavItem<Tab>[] = [
   { id: 'home', label: 'Home', icon: House },
@@ -27,26 +25,35 @@ const navItems: readonly NavItem<Tab>[] = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
-const screens: Record<Tab, () => React.JSX.Element> = {
+/** Every route's title; the Wardrobe isn't in the nav (it opens from Home and the Shop). */
+const routeTitles: readonly { id: Route; label: string }[] = [...navItems, { id: 'wardrobe', label: 'Wardrobe' }]
+
+const screens: Record<Route, () => React.JSX.Element> = {
   home: HomeScreen,
   shop: ShopScreen,
   stats: StatsScreen,
   settings: SettingsScreen,
+  wardrobe: WardrobeScreen,
 }
 
 export default function App() {
-  const [tab, setTab] = useHashTab(TABS, 'home')
-  const Screen = screens[tab]
+  const [route, setRoute] = useHashTab(ROUTES, 'home')
+  const Screen = screens[route]
   const { focusRunning, announcement, countdown } = useTimerAmbience()
   const wallet = useSyncExternalStore(walletStore.subscribe, walletStore.getState)
 
   // Each tab is its own history entry, so it gets its own title ("Shop · Koa"); Home stays "Koa".
   // A running session shows its countdown instead. One effect owns the title, so the tab's title
   // comes back when a session ends or pauses.
-  const title = pageTitle(tab, navItems, countdown)
+  const title = pageTitle(route, routeTitles, countdown)
   useEffect(() => {
     document.title = title
   }, [title])
+
+  // The Wardrobe's Done and keyboard focus depend on how it was reached (navigation.ts).
+  useEffect(() => {
+    wardrobeNav.arrived(route)
+  }, [route])
 
   return (
     <MotionConfig reducedMotion="user">
@@ -61,7 +68,7 @@ export default function App() {
         <main className="app__main">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={tab}
+              key={route}
               className="app__screen"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -75,7 +82,8 @@ export default function App() {
           </AnimatePresence>
         </main>
 
-        <BottomNav items={navItems} current={tab} onSelect={setTab} />
+        {/* No tab is current on the Wardrobe: it isn't one of them (Home isn't highlighted either). */}
+        <BottomNav items={navItems} current={isTab(route) ? route : null} onSelect={setRoute} />
 
         <p className="visually-hidden" role="status" aria-live="polite">
           {announcement}

@@ -83,6 +83,34 @@ export function isEquipped(wardrobe: Wardrobe, item: ShopItem): boolean {
 }
 
 /**
+ * The ids Koa is wearing, in `SLOTS` order (head, face, neck, ear, body). This is the one source
+ * of accessory layer order: Koa draws front overlays in this order, so a later slot paints on top
+ * (the glasses over the beanie). Never depends on the order of the wardrobe object's keys.
+ */
+export function wornItemIds(wardrobe: Wardrobe): string[] {
+  return SLOTS.flatMap((slot) => {
+    const id = wardrobe[slot]
+    return id === null ? [] : [id]
+  })
+}
+
+export interface ClosetGroup {
+  slot: Slot
+  items: ShopItem[]
+}
+
+/**
+ * Owned items grouped by where they go on Koa: only slots with at least one owned item, in
+ * `SLOTS` order, items in catalog order. Ownership comes from the wallet alone.
+ */
+export function closetBySlot(catalog: readonly ShopItem[], wallet: Wallet): ClosetGroup[] {
+  return SLOTS.flatMap((slot) => {
+    const items = catalog.filter((item) => item.slot === slot && isOwned(wallet, item.id))
+    return items.length > 0 ? [{ slot, items }] : []
+  })
+}
+
+/**
  * Rebuild a wardrobe from saved data. Keeps only items that exist in the catalog, are owned,
  * and are in their own slot, so corrupt or tampered data can't equip unowned items.
  */

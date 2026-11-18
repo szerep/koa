@@ -3,6 +3,7 @@ import { createWallet, restoreWallet, rewardSession, type Wallet } from '../rewa
 import type { SessionCompleted } from '../timer/engine'
 import {
   canAffordAnything,
+  closetBySlot,
   createWardrobe,
   equip,
   isEquipped,
@@ -12,7 +13,9 @@ import {
   restoreWardrobe,
   shortfall,
   unequip,
+  wornItemIds,
   type ShopItem,
+  type Wardrobe,
 } from './shop'
 
 const MIN = 60_000
@@ -199,5 +202,71 @@ describe('canAffordAnything', () => {
     // 55 coins left: nothing else is affordable, and the beanie is owned.
     expect(canAffordAnything(bought.wallet, catalog)).toBe(false)
     expect(canAffordAnything(bought.wallet, [beanie])).toBe(false)
+  })
+})
+
+describe('wornItemIds', () => {
+  it('lists what Koa wears in slot order: head, face, neck, ear, body', () => {
+    const wardrobe = { ...createWardrobe(), head: 'beanie', face: 'glasses', ear: 'daisy', body: 'hoodie' }
+    expect(wornItemIds(wardrobe)).toEqual(['beanie', 'glasses', 'daisy', 'hoodie'])
+  })
+
+  it('never depends on the order of the wardrobe object keys', () => {
+    // As if a save had been written with its keys in reverse order.
+    const reversed: Wardrobe = { body: null, ear: 'daisy', neck: 'scarf', face: 'glasses', head: 'beanie' }
+    expect(Object.values(reversed).filter(Boolean)).toEqual(['daisy', 'scarf', 'glasses', 'beanie'])
+    expect(wornItemIds(reversed)).toEqual(['beanie', 'glasses', 'scarf', 'daisy'])
+  })
+
+  it('skips empty slots', () => {
+    expect(wornItemIds(createWardrobe())).toEqual([])
+    expect(wornItemIds({ ...createWardrobe(), neck: 'scarf' })).toEqual(['scarf'])
+  })
+
+  it('matches the equip and unequip results', () => {
+    const w = purchase(purchase(earned(20), beanie, T).wallet, glasses, T).wallet
+    const on = equip(equip(createWardrobe(), w, glasses).wardrobe, w, beanie).wardrobe
+    expect(wornItemIds(on)).toEqual(['beanie', 'glasses']) // put on in the other order
+    expect(wornItemIds(unequip(on, 'head'))).toEqual(['glasses'])
+  })
+})
+
+describe('closetBySlot', () => {
+  const headphones: ShopItem = { id: 'headphones', name: 'Headphones', category: 'extras', slot: 'head', price: 10, description: '', swatch: '#000' }
+  const daisy: ShopItem = { id: 'daisy', name: 'Daisy', category: 'extras', slot: 'ear', price: 10, description: '', swatch: '#000' }
+  const scarf: ShopItem = { id: 'scarf', name: 'Scarf', category: 'scarves', slot: 'neck', price: 10, description: '', swatch: '#000' }
+  const ghost: ShopItem = { id: 'ghost', name: 'Ghost', category: 'hats', slot: 'head', price: 10, description: '', swatch: '#000' }
+  // Catalog order: daisy (ear) before the head items, cap before beanie.
+  const full = [daisy, glasses, cap, headphones, beanie, scarf]
+
+  const own = (...items: ShopItem[]) => items.reduce((w, item) => purchase(w, item, T).wallet, earned(30))
+
+  it('is empty when nothing is owned', () => {
+    expect(closetBySlot(full, earned(30))).toEqual([])
+    expect(closetBySlot(full, createWallet())).toEqual([])
+  })
+
+  it('lists only owned items', () => {
+    expect(closetBySlot(full, own(scarf))).toEqual([{ slot: 'neck', items: [scarf] }])
+  })
+
+  it('groups by slot, not category: the headphones sit with the hats', () => {
+    expect(closetBySlot(full, own(beanie, headphones))).toEqual([{ slot: 'head', items: [headphones, beanie] }])
+  })
+
+  it('keeps catalog order within a slot, whatever the purchase order', () => {
+    const groups = closetBySlot(full, own(beanie, headphones, cap))
+    expect(groups[0].items.map((i) => i.id)).toEqual(['cap', 'headphones', 'beanie'])
+  })
+
+  it('lists only non-empty slots, in slot order', () => {
+    const groups = closetBySlot(full, own(daisy, scarf, glasses, beanie))
+    expect(groups.map((g) => g.slot)).toEqual(['head', 'face', 'neck', 'ear'])
+  })
+
+  it('ignores owned ids that are no longer in the catalog', () => {
+    const w = own(ghost, scarf)
+    expect(isOwned(w, 'ghost')).toBe(true)
+    expect(closetBySlot(full, w)).toEqual([{ slot: 'neck', items: [scarf] }])
   })
 })

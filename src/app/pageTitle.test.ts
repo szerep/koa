@@ -26,6 +26,12 @@ describe('pageTitle', () => {
     expect(pageTitle('shop', tabs, null)).toBe('Shop · Koa')
   })
 
+  it('names a screen outside the nav (the Wardrobe) the same way', () => {
+    const routes = [...tabs, { id: 'wardrobe', label: 'Wardrobe' }] as const
+    expect(pageTitle('wardrobe', routes)).toBe('Wardrobe · Koa')
+    expect(pageTitle('wardrobe', routes, '24:59 Focus')).toBe('24:59 Focus · Koa')
+  })
+
   it('falls back to the app name for an unknown tab', () => {
     expect(pageTitle('nowhere' as 'home', tabs)).toBe('Koa')
   })

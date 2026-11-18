@@ -78,6 +78,25 @@
   box-shadow: inset 0 0 0 1px var(--cream-300);
 }
 
+/*
+ * The way into the Wardrobe (Phase 12), once something is owned: its own row across the card, in
+ * the "wearing" chips' tint, so the narrow outfit column never has to fit it.
+ */
+.shop__wardrobe {
+  grid-column: 1 / -1;
+  justify-self: end;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  background: var(--euca-100);
+  color: var(--euca-800);
+  box-shadow: none;
+  font-size: 1rem;
+}
+
+.shop__wardrobe:hover {
+  background: var(--euca-200);
+}
+
 /* Category tabs scroll sideways on narrow phones instead of squeezing. */
 .shop__tabs {
   justify-self: center;

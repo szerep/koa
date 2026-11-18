@@ -1,0 +1,354 @@
+/*
+ * The Wardrobe (Phase 12). Koa sits in a round pool of light, as on Home and in the empty states;
+ * the closet below it is a grid of quiet tiles. Koa is the one thing that stands out.
+ *
+ * Phones (portrait): one column. The header (title, Done) and Koa stay pinned at the top while
+ * the closet scrolls under them, so every change is seen on Koa and Done is always reachable.
+ * Wide screens and landscape phones: Koa on the left (pinned), the closet on the right.
+ */
+
+/* The stage's size. Also set on the root (when supported) for the focus scroll padding below. */
+.wardrobe,
+html:has(.wardrobe) {
+  --wardrobe-stage: clamp(150px, min(62vw, 30dvh), 300px);
+}
+
+/*
+ * Keyboard focus (and scrollIntoView) keeps a focused tile clear of the pinned header and Koa, not
+ * just inside the viewport: their height is the stage plus about 96 px (header, gaps, padding).
+ */
+html:has(.wardrobe) {
+  scroll-padding-top: calc(var(--safe-top) + var(--wardrobe-stage) + 96px);
+}
+
+.wardrobe {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+/* The pinned top: a cream band, as wide as the screen, that the closet scrolls under. */
+.wardrobe__top {
+  position: sticky;
+  top: var(--safe-top);
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  margin-inline: calc(var(--gutter) * -1);
+  padding: var(--space-2) var(--gutter) var(--space-3);
+  background: var(--bg);
+}
+
+.wardrobe__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.wardrobe__title {
+  font-size: var(--text-display);
+}
+
+/* The heading takes focus only so screen readers start there; it isn't a control. */
+.wardrobe__title:focus {
+  outline: none;
+}
+
+.wardrobe__done {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  font-size: 1rem;
+}
+
+/* Koa's spot: the same round pool of light as the empty states, sized like Home's halo. */
+.wardrobe__stage {
+  position: relative;
+  width: var(--wardrobe-stage);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+/* Koa sits in the lower part of the pool, feet just over its edge, as on Home. */
+.wardrobe__koala {
+  position: absolute;
+  left: 50%;
+  bottom: -1%;
+  transform: translateX(-50%);
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * The closet
+ * ------------------------------------------------------------------------------------------- */
+
+.wardrobe__closet {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.wardrobe__intro {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.wardrobe__hint {
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  text-wrap: pretty;
+}
+
+.wardrobe__art-note {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  text-wrap: pretty;
+}
+
+.closet-slot {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.closet-slot__title {
+  font-size: 1.125rem;
+  padding-inline: var(--space-1);
+}
+
+.closet-slot__items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+}
+
+.closet-slot__items > li {
+  display: grid;
+}
+
+/* One owned item. A toggle: the green ring and the check mark what Koa has on. */
+.closet-tile {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  align-content: start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  text-align: center;
+  transition:
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.closet-tile:active {
+  transform: scale(0.97);
+}
+
+.closet-tile.is-worn {
+  box-shadow:
+    0 0 0 2px var(--euca-300),
+    var(--shadow-2);
+}
+
+/* The global focus style rounds to a pill; keep the tile's own shape. */
+.closet-tile:focus-visible {
+  border-radius: 22px;
+}
+
+.closet-tile__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 16px;
+  background: var(--surface-sunken);
+}
+
+.closet-tile__art .accessory-thumb {
+  width: 76%;
+}
+
+.closet-tile__swatch {
+  width: 40%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow:
+    var(--shadow-inset-round),
+    var(--shadow-1);
+}
+
+/* A small check in the tile's corner, clear of the item's picture. */
+.closet-tile__worn {
+  position: absolute;
+  z-index: 1;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--euca-500);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-small);
+}
+
+.closet-tile__name {
+  padding-inline: var(--space-1);
+  color: var(--text-heading);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.closet-tile__soon {
+  align-self: end;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * Empty: nothing owned yet
+ * ------------------------------------------------------------------------------------------- */
+
+.wardrobe__empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  max-width: 34ch;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.wardrobe__empty-title {
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 600;
+  color: var(--text-heading);
+  line-height: 1.2;
+}
+
+.wardrobe__empty-message {
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+.wardrobe__empty .btn {
+  margin-top: var(--space-3);
+}
+
+/* Nothing to scroll: no need to pin the top. */
+.wardrobe--empty .wardrobe__top {
+  position: static;
+}
+
+html:has(.wardrobe--empty) {
+  scroll-padding-top: 0;
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * Layouts
+ * ------------------------------------------------------------------------------------------- */
+
+/* Tablets in portrait: same column, more room for Koa. */
+@media (min-width: 600px) and (max-width: 959px) {
+  .wardrobe,
+  html:has(.wardrobe) {
+    --wardrobe-stage: clamp(220px, min(50vw, 32dvh), 340px);
+  }
+}
+
+/*
+ * Wide screens and landscape phones: Koa pinned on the left, header and closet on the right.
+ * The landscape condition is the one used in app.css, home.css and bottom-nav.css.
+ */
+@media (min-width: 960px), (orientation: landscape) and (max-height: 500px) and (min-width: 600px) {
+  .wardrobe {
+    grid-template-columns: var(--wardrobe-stage) minmax(0, 1fr);
+    grid-template-areas:
+      'stage header'
+      'stage closet';
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    column-gap: var(--space-7);
+    row-gap: var(--space-4);
+    max-width: none;
+  }
+
+  /* No band: the stage is pinned in its own column. */
+  .wardrobe__top {
+    display: contents;
+  }
+
+  /* Done stays reachable: the header is pinned at the top of its column. */
+  .wardrobe__header {
+    grid-area: header;
+    position: sticky;
+    top: var(--safe-top);
+    z-index: 2;
+    /* A little wider than the column, so the tiles' rings and shadows pass under it too. */
+    width: auto;
+    margin: calc(var(--space-3) * -1);
+    padding: var(--space-3);
+    background: var(--bg);
+  }
+
+  .wardrobe__stage {
+    grid-area: stage;
+    position: sticky;
+    top: calc(var(--safe-top) + var(--space-5));
+  }
+
+  .wardrobe__closet,
+  .wardrobe__empty {
+    grid-area: closet;
+  }
+
+  .wardrobe__empty {
+    justify-items: start;
+    margin-inline: 0;
+    text-align: start;
+  }
+
+  /* Focused tiles clear the pinned header (about 68 px). */
+  html:has(.wardrobe) {
+    scroll-padding-top: calc(var(--safe-top) + 80px);
+  }
+}
+
+@media (min-width: 960px) {
+  .wardrobe,
+  html:has(.wardrobe) {
+    --wardrobe-stage: clamp(260px, min(34vw, 100dvh - 260px), 400px);
+  }
+}
+
+/* Landscape phones: Koa sized from the short height, so the whole pool is on screen. */
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 600px) {
+  .wardrobe,
+  html:has(.wardrobe) {
+    --wardrobe-stage: clamp(150px, min(100dvh - 120px - var(--safe-top) - var(--safe-bottom), 40vw), 280px);
+  }
+
+  .wardrobe {
+    column-gap: var(--space-5);
+  }
+
+  .wardrobe__stage {
+    top: calc(var(--safe-top) + var(--space-3));
+  }
+}

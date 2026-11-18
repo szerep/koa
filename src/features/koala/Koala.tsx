@@ -26,7 +26,11 @@ interface KoalaProps {
   eyesClosed?: boolean
   /** Breathing and blink pace. */
   tempo?: KoalaTempo
-  /** Ids of equipped items. Items without artwork for this pose are not drawn. */
+  /**
+   * Ids of equipped items, in paint order: overlays are drawn in this order, so later items sit
+   * on top. Callers pass `wornItemIds(wardrobe)` (slot order). Items without artwork for this
+   * pose are not drawn.
+   */
   wearing?: readonly string[]
   className?: string
   /** Drawn over the figure, unaffected by its motion (speech bubble, sleep glyphs). */
