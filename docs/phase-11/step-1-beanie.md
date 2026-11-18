@@ -1,6 +1,6 @@
 # Phase 11 · Step 1: the beanie
 
-**Status (2026-11-18): complete.** `beanie_v02` is approved, wired (section 5), and has the two follow-up UI fixes (section 6: the speech bubble clears the pom-pom; the Shop card shows the beanie). Step 1 was approved and committed as `cc877cd` and is live in production (now `d8a40b4`, which includes it). The short-screen bubble/leaf-marker overlap is an accepted trade-off (section 6).
+**Status (2026-11-18): complete.** `beanie_v02` is approved, wired (section 5), and has the two follow-up UI fixes (section 6: the speech bubble clears the pom-pom; the Shop card shows the beanie). Step 1 was approved and committed as `cc877cd` and is live in production (now `c4daa76`, the docs-only Phase 11 closeout, which includes it). The short-screen bubble/leaf-marker overlap is an accepted trade-off (section 6).
 
 *Earlier status (2026-11-13), kept as history:* **`beanie_v02` is approved (owner's visual review of `art/review-phase11/beanie_review.png`) and wired (section 5). One open item: the speech bubble covers the pom-pom on Home (section 5). Not committed.**
 - `beanie_v01` **failed** `extract` (region): the cuff's ends dropped below y = 790 at the temples (lowest y 841 at x 240, 820 at x 760; 3608 px past the line; 0 px in the eye/blink region). Its median color rgb(157, 154, 116) also leaned olive. Rejected; no rules changed.

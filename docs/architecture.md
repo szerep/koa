@@ -14,16 +14,18 @@
 
 ```
 src/
-  main.tsx                  # mounts the app; calls connectFeatures() first
+  main.tsx                  # mounts the app; calls connectFeatures() first; in `pnpm dev` only, mounts the Dev Tools
   app/
     App.tsx                 # shell: top bar, tab screens, bottom nav, reward overlay
     connect.ts              # one-time wiring: timer → rewards, settings → timer, timer/wallet/input → Koa,
                             # wake lock / notification / sound launch checks, cross-tab refresh
                             # (wallet, wardrobe, settings) and cross-tab reset detection,
                             # service worker registration, update checks, install-help listening
-    useHashTab.ts           # tab state mirrored to location.hash (#/shop)
+    useHashTab.ts           # route state mirrored to location.hash (#/shop, #/wardrobe)
+    navigation.ts           # TABS, ROUTES (+ wardrobe), wardrobeNav: open/close/visit, origin-aware Done, focus hand-off
+    wear.ts, toggleWear.ts  # the shared wear path (equip/unequip + Koa's showOff), used by the Shop and the Wardrobe
     useTimerAmbience.ts     # tab title countdown, focus-mode dimming, completion announcement
-    screens/                # HomeScreen, ShopScreen, SettingsScreen (+ InstallCard, DataCard: export, reset), StatsScreen,
+    screens/                # HomeScreen, ShopScreen, WardrobeScreen, SettingsScreen (+ InstallCard, DataCard: export, reset), StatsScreen,
                             # ComingSoonScreen (Koa resting state, used for the Stats empty state)
   core/                     # pure logic, no React (unit tested)
     timer/engine.ts         # timer state machine + transitions
@@ -82,6 +84,10 @@ art/reference/              # the design sheet (never shipped)
 
 **Navigation:** four tabs (Home, Shop, Stats, Settings) switched in state and mirrored to `location.hash`. There's no router dependency.
 
+**The Wardrobe (Phase 12)** is a fifth route, `#/wardrobe`, but not a tab (`src/app/navigation.ts`: `ROUTES = [...TABS, 'wardrobe']`). It's opened from Home's bottom-right shirt button (not shown in running or paused focus) and the Shop's "Open wardrobe" (once something is owned). `wardrobeNav` remembers the opener in memory: Done sets the hash to it as a new history entry (never `history.back()`), or Home when it's unknown (direct load, reload, left another way). On the Wardrobe no nav item is current. Keyboard focus moves to the Wardrobe's heading when it's opened, and back to the opener after Done (`takeFocus`).
+
+**Dev Tools (`src/dev/`, local development only):** `main.tsx` imports them only inside `if (import.meta.env.DEV)`, which production builds remove, so the module isn't emitted. They seed and reset the wallet and wardrobe through the real stores and `koa:v1` (no second state): a coin grant is a `dev:coins:<time>` ledger entry of the existing `cycle` kind, so it never counts as study time; "Unlock all" buys through `walletStore.purchase()`. `scripts/check-build.mjs` (`checkNoDevTools`) fails a build containing their marker, and `e2e/devtools.e2e.ts` checks the production build.
+
 ## Timer (`src/core/timer/engine.ts`)
 
 ```ts
@@ -137,6 +143,9 @@ interface Wallet {
 - **Wardrobe** = `Record<'head' | 'face' | 'neck' | 'ear' | 'body', itemId | null>`, with one item per slot. Only owned items can be equipped. On load, an item is kept only if it exists in the catalog, is owned and is in its own slot.
 - **Catalog:** 9 items in `src/config/catalog.ts` (hats, glasses, clothes, scarves, extras).
 - **UI flow:** a two-step buy ("120" → "Buy for 120?"), then the item is equipped automatically.
+- **Layer order (Phase 12):** `wornItemIds(wardrobe)` returns the worn ids in slot order (head, face, neck, ear, body); it's the only list passed to `<Koala wearing>` (later items paint on top).
+- **Closet:** `closetBySlot(catalog, wallet)` groups owned items by slot (catalog order) for the Wardrobe screen; `slotLabels` in the catalog config names the slots.
+- **Wearing and taking off** an owned item (Shop and Wardrobe) goes through `createToggleWear()` (`src/app/wear.ts`): equip or unequip, `koalaStore.showOff()` on putting on, and the message. It lives in the app layer because it joins two features.
 
 ## Persistence (`src/storage/persistence.ts`)
 
@@ -217,7 +226,7 @@ interface Wallet {
 - **Install help** (`installStore.ts`, `displayMode.ts`, rules in `core/pwa/install.ts`, card `app/screens/InstallCard.tsx`): hidden when `isStandalone()` or where installing isn't possible. Chromium: the captured `beforeinstallprompt` (banner suppressed) is opened only by the Install tap and used once. iPhone/iPad: Share → Add to Home Screen steps and the separate-data note. Other browsers: their menu command. Listening starts in `connect.ts` before render.
 - **iOS:** `apple-touch-icon` and 30 `apple-touch-startup-image` links in `index.html` (exact device size, pixel ratio and orientation), `apple-mobile-web-app-capable`, status bar style `default`, `viewport-fit=cover` with the safe-area tokens (`--safe-*`). Pinch zoom stays allowed. The installed iPhone app has its own storage, separate from Safari (decision D10, no import).
 - **Build check** (`scripts/check-build.mjs`): fails the build on reference art in `dist/`, oversized character frames, icons or splash images, a precache that isn't exactly the expected list, splash images that don't match their `<link>` media queries, a kill-switch worker in a normal build, a missing `404.html` (Step 10), or a size over the performance budget (Phase 9 Step 9, `BUDGET`: entry JS — the module scripts of `index.html` — ≤ 160 kB gzip, all CSS ≤ 12 kB gzip, precache ≤ 1.2 MB). It reports the entry JS, later-loaded chunks and `sw.js` separately.
-- **Hosting (connected in Step 10; live at `https://koa-5cl.pages.dev`; last Phase 9 deployment `a839f5e`, production now `d8a40b4`):** Cloudflare Pages (Free plan) with GitHub integration, `pnpm build` → `dist`; every push to `main` deploys production. Node 24 (`.node-version`) and pnpm 12.14.0 (`packageManager` + the `PNPM_VERSION` project variable). `public/_headers`: `no-cache` for `/`, `sw.js`, `index.html` and the manifest, immutable `/assets/*`. Pages 308-redirects `/index.html` to `/`, which the precache handles. `public/404.html` (required by the build check, never precached) turns off Pages' SPA fallback, so unknown paths and missing assets get a real 404.
+- **Hosting (connected in Step 10; live at `https://koa-5cl.pages.dev`; last Phase 9 deployment `a839f5e`, production now `c4daa76`, the docs-only Phase 11 closeout; the last code change deployed was `d8a40b4`):** Cloudflare Pages (Free plan) with GitHub integration, `pnpm build` → `dist`; every push to `main` deploys production. Node 24 (`.node-version`) and pnpm 12.14.0 (`packageManager` + the `PNPM_VERSION` project variable). `public/_headers`: `no-cache` for `/`, `sw.js`, `index.html` and the manifest, immutable `/assets/*`. Pages 308-redirects `/index.html` to `/`, which the precache handles. `public/404.html` (required by the build check, never precached) turns off Pages' SPA fallback, so unknown paths and missing assets get a real 404.
 
 ## Dependencies
 

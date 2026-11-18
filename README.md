@@ -4,7 +4,7 @@ Koa is a cozy Pomodoro timer with a koala companion. Focus sessions earn **Coins
 
 It's built as a web app for **iPhone first** (it also works on iPad and desktop browsers). It installs as an app (Add to Home Screen on iPhone and iPad, Install in Chrome and Edge) and works offline after the first visit.
 
-> **Status:** early development. Phases 1–8, 10 and 11 (accessory artwork for the beanie and the round glasses) are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10 is in progress: the local checks are done (Lighthouse mobile: Performance 92, Accessibility 96, Best Practices 100, median of 3; Accessibility 100 after a coin pill fix; the deployment configuration is verified and approved). Koa is deployed at **https://koa-5cl.pages.dev** (Cloudflare Pages). On an Android phone (Samsung Galaxy Note 10+, Chrome), installing, offline use, notification delivery and tap-to-open, and updates have been checked. On a Windows laptop, installing, offline use and updates in browser tabs have been checked. iPhone and iPad are **not tested yet** (no device available), so Phase 9 stays open until Koa is confirmed to install on an iPhone. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
+> **Status:** early development. Phases 1–8, 10, 11 (accessory artwork for the beanie and the round glasses) and 12 (the Wardrobe) are complete. Phase 9 (PWA and mobile optimization) is in progress: Steps 1–9 of 10 are done (offline service worker, safe updates, app icons, iOS splash screens, install help, notifications through the service worker, export through the share sheet in installed apps, mobile layout and a performance budget). Step 10 is in progress: the local checks are done (Lighthouse mobile: Performance 92, Accessibility 96, Best Practices 100, median of 3; Accessibility 100 after a coin pill fix; the deployment configuration is verified and approved). Koa is deployed at **https://koa-5cl.pages.dev** (Cloudflare Pages). On an Android phone (Samsung Galaxy Note 10+, Chrome), installing, offline use, notification delivery and tap-to-open, and updates have been checked. On a Windows laptop, installing, offline use and updates in browser tabs have been checked. iPhone and iPad are **not tested yet** (no device available), so Phase 9 stays open until Koa is confirmed to install on an iPhone. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/phase-9/pwa-plan.md`](docs/phase-9/pwa-plan.md).
 
 ## Features
 
@@ -25,6 +25,7 @@ It's built as a web app for **iPhone first** (it also works on iPad and desktop 
 - 9 items across Hats, Glasses, Clothes, Scarves and Extras
 - Two-step purchases, protection against buying the same item twice or overspending, and an owned-items inventory
 - Equip and unequip items, one per slot (head, face, neck, ear, body)
+- The Wardrobe, opened from Home or the Shop: Koa large and alive, everything you own grouped by where it goes, and a tap to put an item on or take it off
 - The wallet keeps earned and spent coins in separate records. The balance is always calculated from them, and spending never touches earned rewards
 
 **Koa**
@@ -93,6 +94,7 @@ Everything is saved locally in the browser (LocalStorage). Damaged save data is 
 | 9 | PWA, offline support, mobile optimization (Steps 1–9 of 10 done; Step 10: deployed, Android and Windows checks pass, iPhone and iPad not tested) | In progress |
 | 10 | Testing and polish | ✅ |
 | 11 | Accessory artwork (the beanie and the round glasses) | ✅ |
+| 12 | Wardrobe (dress Koa in what you own) | ✅ |
 
 ## Tech stack
 
@@ -116,7 +118,7 @@ pnpm dev          # start the dev server (http://localhost:5173)
 
 | Command | Description |
 |---|---|
-| `pnpm dev` | Development server with hot reload |
+| `pnpm dev` | Development server with hot reload, plus a small "Dev tools" panel for local testing (give coins, unlock or equip every item, reset the wallet or the wardrobe); never in production builds |
 | `pnpm test` | Unit tests (Vitest) |
 | `pnpm lint` | ESLint |
 | `pnpm build` | Type check, production build into `dist/`, then the build check (`scripts/check-build.mjs`) |
@@ -167,6 +169,7 @@ More detail is in [`docs/architecture.md`](docs/architecture.md).
 - [Accessory artwork needed](docs/phase-6/accessory-assets.md)
 - [Settings plan (Phase 8)](docs/phase-8/settings-plan.md)
 - [PWA and mobile plan (Phase 9)](docs/phase-9/pwa-plan.md): steps, decisions, deployment to Cloudflare Pages
+- [Wardrobe plan (Phase 12)](docs/phase-12/wardrobe-plan.md)
 
 ## Deployment
 
