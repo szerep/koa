@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   BUDGET,
+  DEV_TOOLS_MARKER,
   ICON_LIMITS,
   LIMITS,
   PRECACHE_FIXED,
   SPLASH_LIMITS,
   checkBudget,
   checkFiles,
+  checkNoDevTools,
   checkNotFoundPage,
   checkPrecache,
   checkSplash,
@@ -18,6 +20,7 @@ import {
   precacheUrls,
   splashLinks,
 } from './check-build.mjs'
+import { DEV_TOOLS_MARKER as PANEL_MARKER } from '../src/dev/devTools'
 
 const file = (path: string, bytes = 1_000) => ({ path, bytes })
 
@@ -133,6 +136,26 @@ describe('checkNotFoundPage', () => {
       expect(errors).toHaveLength(1)
       expect(errors[0]).toContain('404.html: missing')
     }
+  })
+})
+
+describe('checkNoDevTools', () => {
+  it('accepts a build without the Dev Tools', () => {
+    expect(checkNoDevTools([{ path: 'index.html', text: '<div id="root"></div>' }, { path: 'assets/index-abc.js', text: 'createRoot()' }])).toEqual([])
+  })
+
+  it('uses the marker the Dev Tools panel renders', () => {
+    expect(DEV_TOOLS_MARKER).toBe(PANEL_MARKER)
+  })
+
+  it('fails when the Dev Tools marker is in any shipped file', () => {
+    const errors = checkNoDevTools([
+      { path: 'assets/index-abc.js', text: 'x({"data-koa-dev-tools":"koa-dev-tools"})' },
+      { path: 'assets/mountDevTools-abc.js', text: 'const m="koa-dev-tools"' },
+      { path: 'index.html', text: '<div></div>' },
+    ])
+    expect(errors).toHaveLength(2)
+    expect(errors[0]).toContain('assets/index-abc.js: contains the Dev Tools')
   })
 })
 

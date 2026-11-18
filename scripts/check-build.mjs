@@ -10,9 +10,9 @@
 // plugin's self-destroying worker, and the check says so loudly.
 //
 // It also requires the top-level 404.html that keeps Cloudflare Pages from serving index.html for
-// unknown paths (Step 10).
+// unknown paths (Step 10), and fails if the local Dev Tools (src/dev/, Phase 12) got into the build.
 //
-// The rules live in `checkFiles`, `checkNotFoundPage`, `checkPrecache`, `checkSplash` and `checkBudget`, pure functions tested in
+// The rules live in `checkFiles`, `checkNotFoundPage`, `checkNoDevTools`, `checkPrecache`, `checkSplash` and `checkBudget`, pure functions tested in
 // check-build.test.ts.
 // Sizes use decimal units (1 kB = 1000 bytes), like Vite's build output.
 
@@ -162,6 +162,22 @@ export function checkNotFoundPage(files) {
   return files.some((f) => f.path === '404.html')
     ? []
     : ['404.html: missing (without it Cloudflare Pages serves index.html with status 200 for unknown paths)']
+}
+
+/** The Dev Tools panel's marker (`DEV_TOOLS_MARKER` in src/dev/devTools.ts). */
+export const DEV_TOOLS_MARKER = 'koa-dev-tools'
+
+/**
+ * The Dev Tools (Phase 12) are for local development only: `main.tsx` loads them behind
+ * `import.meta.env.DEV`, which a production build turns into dead code. Fails if their marker is
+ * in any shipped HTML, JS or CSS file anyway.
+ * @param {{ path: string, text: string }[]} sources
+ * @returns {string[]} the errors
+ */
+export function checkNoDevTools(sources) {
+  return sources
+    .filter(({ text }) => text.includes(DEV_TOOLS_MARKER))
+    .map(({ path }) => `${path}: contains the Dev Tools, which are for local development only`)
 }
 
 /**
@@ -455,6 +471,11 @@ function main(argv) {
 
   const { errors, images } = checkFiles(files)
   errors.push(...checkNotFoundPage(files))
+  errors.push(
+    ...checkNoDevTools(
+      files.filter((f) => /\.(html|js|css)$/.test(f.path)).map((f) => ({ path: f.path, text: readFileSync(f.full, 'utf8') })),
+    ),
+  )
 
   const killSwitch = process.env.KOA_SW_KILL_SWITCH === '1'
   const sw = files.find((f) => f.path === 'sw.js')
